@@ -994,7 +994,7 @@ void    RichardsJacobianEval(
     permyp = SubvectorData(permy_sub);
     permzp = SubvectorData(permz_sub);
 
-    Do_Richards_BCContrib(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values,
+    Do_BCContrib(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values,
     {
       ApplyBCPatch(DirichletBC,
                    PROLOGUE({

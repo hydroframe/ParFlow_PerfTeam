@@ -60,6 +60,18 @@
 #define OctreeFacePhysics(key, ...)              \
   XSWITCH(key, __VA_ARGS__)
 
+/* Used in RichardsJacobianEval and NlFunctionEval to add
+ *    Boundary Condition patch value contributions */
+#define Do_BCContrib(i, j, k, ival, bc_struct, ipatch, is,          \
+                              bc_patch_values, body)                \
+  ForBCStructNumPatches(ipatch, bc_struct)                          \
+  {                                                                 \
+    bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);   \
+    {                                                               \
+      body;                                                         \
+    }                                                               \
+  }
+
 /*********************************************
  *
  * Do not call any of the below macros directly!
