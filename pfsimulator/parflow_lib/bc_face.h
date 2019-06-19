@@ -74,6 +74,7 @@
 #define XCASE(...)                              \
   CASE_BODY_SELECTION(__VA_ARGS__, WITH_BODY, ONLY_CASE)(__VA_ARGS__)
 
+/* Expand to switch on different boundary condition types */
 #define XSWITCH(key, ...)                       \
   switch (key)                                  \
   {                                                       \
@@ -98,7 +99,105 @@
 #define EXPAND_FACES_5(a, ...) a EXPAND_FACES_4(__VA_ARGS__)
 #define EXPAND_FACES_6(a, ...) a EXPAND_FACES_5(__VA_ARGS__)
 
+/* Expand the boundary condition patch equations into the loop */
+/* TODO: nl_function_eval has a case for Overland that uses a different loop than this.
+ *       Will need to consider a different design?
+ */
 #define EXPAND_FACE_PHYSICS(prologue, epilogue, ...)  \
   BCStructPatchLoopX(i, j, k, ival, bc_struct, ipatch, is, prologue, epilogue, __VA_ARGS__);
+
+
+
+
+/******************************
+ *
+ * Example of what the macro can expand to
+ *
+ ******************************/
+#if 0
+
+#define ApplyBCPatchExample                     \
+  Do_ApplyDirichlet_Example(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values, \
+  {                                                                     \
+    ApplyBCPatch(DirichletBC,                                           \
+                 PROLOGUE({                                             \
+                     ip = SubvectorEltIndex(p_sub, i, j, k);            \
+                   }),                                                  \
+                 EPILOGUE({                                             \
+                     cp[im] = op[im];                                   \
+                     op[im] = 0.0;                                      \
+                   }),                                                  \
+                 FACE(Left,  { /*Left Physics */ }),                    \
+                 FACE(Right, { /*Right Physics */ }),                   \
+                 FACE(Down,  { /*Down Physics */ }),                    \
+                 FACE(Up,    { /*Up Physics */ }),                      \
+                 FACE(Back,  { /*Back Physics */ }),                    \
+                 FACE(Front, { /*Front Physics */ })                    \
+      );                                                                \
+  });
+
+#define ApplyBCPatchTemplate                                            \
+  ForBCStructNumPatches(ipatch, bc_struct)                              \
+  {                                                                     \
+    switch (BCStructPatchType(bc_struct, ipatch))                       \
+    {                                                                   \
+      /* ApplyBCPatch(DirichletBC, ...) */                              \
+      case DirichletBC:                                                 \
+      {                                                                 \
+        BCStructPatchLoopX(i, j, k, ival, bc_struct, ipatch, is,        \
+        {                                                               \
+          /* PV_f and node come from GrGeomOctreeFaceLoopX expanded from BCStructLoopX */ \
+          for (PV_f = 0; PV_f < GrGeomOctreeNumFaces; PV_f++)           \
+            if (GrGeomOctreeHasFace(node, PV_f))                        \
+            {                                                           \
+              {                                                         \
+                /* Prologue */                                          \
+                ip = SubvectorEltIndex(p_sub, i, j, k);                 \
+              }                                                         \
+              switch (PV_f)                                             \
+              {                                                         \
+                case Left:                                              \
+                {                                                       \
+                  /* Left Physics */                                    \
+                  break;                                                \
+                }                                                       \
+                case Right:                                             \
+                {                                                       \
+                  /* Right Physics */                                   \
+                  break;                                                \
+                }                                                       \
+                case Down:                                              \
+                {                                                       \
+                  /* Down Physics */                                    \
+                  break;                                                \
+                }                                                       \
+                case Up:                                                \
+                {                                                       \
+                  /* Up Physics */                                      \
+                  break;                                                \
+                }                                                       \
+                case Back:                                              \
+                {                                                       \
+                  /* Back Physics */                                    \
+                  break;                                                \
+                }                                                       \
+                case Front:                                             \
+                {                                                       \
+                  /* Front Physics */                                   \
+                  break;                                                \
+                }                                                       \
+              }                                                         \
+              {                                                         \
+                /* Epilogue */                                          \
+                cp[im] += op[im];                                       \
+                op[im] = 0.0;                                           \
+              }                                                         \
+            }                                                           \
+        });                                                             \
+      }                                                                 \
+    }                                                                   \
+  }
+
+#endif
 
 #endif // _BC_FACE_H
