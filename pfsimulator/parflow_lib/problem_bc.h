@@ -116,9 +116,9 @@ typedef struct {
     int PV_ix = SubgridIX(PV_subgrid) - 1;                              \
     int PV_iy = SubgridIY(PV_subgrid) - 1;                              \
     int PV_iz = SubgridIZ(PV_subgrid) - 1;                              \
-    int PV_nx = SubgridNX(PV_subgrid);                                  \
-    int PV_ny = SubgridNY(PV_subgrid);                                  \
-    int PV_nz = SubgridNZ(PV_subgrid);                                  \
+    int PV_nx = SubgridNX(PV_subgrid) + 2;                              \
+    int PV_ny = SubgridNY(PV_subgrid) + 2;                              \
+    int PV_nz = SubgridNZ(PV_subgrid) + 2;                              \
                                                                         \
     ival = 0;                                                           \
     GrGeomPatchLoopX(i, j, k, fdir, PV_gr_domain, PV_patch_index,       \

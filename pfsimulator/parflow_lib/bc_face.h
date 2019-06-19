@@ -28,6 +28,7 @@
 #define EPILOGUE(x) x
 #define NO_PROLOGUE PROLOGUE({})
 #define NO_EPILOGUE EPILOGUE({})
+#define PRECONDITION(x) x
 
 /* Apply physics for a boundary condition */
 #define ApplyBCPatch(_case, ...)                \
@@ -45,6 +46,14 @@
     {                                                     \
       equations;                                          \
     }                                                     \
+  }
+
+#define ApplyBCPatch_WithPrecondition(_case, precondition, ...) \
+  case _case:                                                   \
+  {                                                             \
+    precondition;                                               \
+    EXPAND_FACE_PHYSICS(__VA_ARGS__);                           \
+    break;                                                      \
   }
 
 /* To be called from GrGeomOctreeFaceLoopX */
