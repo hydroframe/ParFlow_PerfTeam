@@ -138,7 +138,7 @@
 #if 0
 
 #define ApplyBCPatchExample                     \
-  Do_ApplyDirichlet_Example(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values, \
+  Do_ApplyBCPatch_Example(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values, \
   {                                                                     \
     ApplyBCPatch(DirichletBC,                                           \
                  PROLOGUE({                                             \
