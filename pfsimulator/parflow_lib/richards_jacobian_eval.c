@@ -493,36 +493,24 @@ void    RichardsJacobianEval(
 
     pp = SubvectorData(p_sub);
 
-
-    Do_AddDirichletBC_Pressure(i, j, k, is, ival, ipatch, bc_struct, bc_patch_values,
+    ForBCStructNumPathces(ipatch, bc_struct)
     {
-      ApplyBCPatch(DirichletBC,
-                   PROLOGUE({
-                       ip = SubvectorEltIndex(p_sub, i, j, k);
-                       value = bc_patch_values[ival];
-                     }),
-                   NO_EPILOGUE,
-                   FACE(Left, {
-                       pp[ip - 1] = value;
-                     }),
-                   FACE(Right, {
-                       pp[ip + 1] = value;
-                     }),
-                   FACE(Down, {
-                       pp[ip - sy_v] = value;
-                     }),
-                   FACE(Up, {
-                       pp[ip + sy_v] = value;
-                     }),
-                   FACE(Back, {
-                       pp[ip - sz_v] = value;
-                     }),
-                   FACE(Front, {
-                       pp[ip + sz_v] = value;
-                     })
-                   ); // End DirichletBC
-    }); /* End Do_AddDirichletBC_Pressure */
-  }            /* End subgrid loop */
+      bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
+      switch(BCStructBCType(bc_struct, ipatch))
+      {
+        case DirichletBC:
+        {
+          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
+          {
+            ip = SubvectorEltIndex(p_sub, i, j, k);
+            value = bc_patch_values[ival];
+            pp[ip + fdir[0] * 1 + fdir[1] * sy_v + fdir[2] * sz_v] = value;
+          });
+          break;
+        }
+      }                         /* End switch BCtype */
+    }                           /* End ipatch loop */
+  }                             /* End subgrid loop */
 
   /* Calculate rel_perm and rel_perm_der */
 
