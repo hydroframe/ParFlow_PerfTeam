@@ -29,6 +29,12 @@
 #define NO_PROLOGUE PROLOGUE({})
 #define NO_EPILOGUE EPILOGUE({})
 #define PRECONDITION(x) x
+#define POSTCONDITION(x) x
+
+/* Apply same physics for a set of boundary conditions */
+#define AnyOf(_case, ...)                               \
+  _case:                                                \
+  EXPAND_CASES(COUNT_VARARGS(__VA_ARGS__))(__VA_ARGS__)
 
 /* Apply physics for a boundary condition */
 #define ApplyBCPatch(_case, ...)                \
@@ -48,12 +54,26 @@
     }                                                     \
   }
 
+/* Apply physics for a boundary condition with an action before the loop body */
+/* EX: Applying kinematic or diffusive function call in nl_function_eval for
+ * the OverlandBC case */
 #define ApplyBCPatch_WithPrecondition(_case, precondition, ...) \
   case _case:                                                   \
   {                                                             \
     precondition;                                               \
     EXPAND_FACE_PHYSICS(__VA_ARGS__);                           \
     break;                                                      \
+  }
+
+/* Apply physics for a boundary condition with an action after the loop body */
+/* EX: Applying kinematic or diffusive function call in richards_jacobian_eval for
+   the OverlandBC case */
+#define ApplyBCPatch_WithPostcondition(_case, postcondition, ...) \
+  case _case:                                                     \
+  {                                                               \
+    EXPAND_FACE_PHYSICS(__VA_ARGS__);                             \
+    postcondition;                                                \
+    break;                                                        \
   }
 
 /* To be called from GrGeomOctreeFaceLoopX */
@@ -108,8 +128,17 @@
   EVAL_COUNT_VARARGS("not_evaluated", ##__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
 /* Macro expansion indirection to get us the right EXPAND_FACES_N macro */
-#define EXPAND_INDIRECTION(n) EXPAND_FACES_ ## n
-#define EXPAND_FACES(n) EXPAND_INDIRECTION(n)
+#define EXPAND_INDIRECTION(a, n) a ## n
+#define EXPAND_FACES(n) EXPAND_INDIRECTION(EXPAND_FACES_, n)
+#define EXPAND_CASES(n) EXPAND_INDIRECTION(EXPAND_CASES_, n)
+
+#define EXPAND_CASES_1(a, ...) case a /* Drop last colon to prevent case a: : */
+#define EXPAND_CASES_2(a, ...) case a: EXPAND_CASES_1(__VA_ARGS__)
+#define EXPAND_CASES_3(a, ...) case a: EXPAND_CASES_2(__VA_ARGS__)
+#define EXPAND_CASES_4(a, ...) case a: EXPAND_CASES_3(__VA_ARGS__)
+#define EXPAND_CASES_5(a, ...) case a: EXPAND_CASES_4(__VA_ARGS__)
+#define EXPAND_CASES_6(a, ...) case a: EXPAND_CASES_5(__VA_ARGS__)
+
 
 /* This is a bit silly, might be a proper preprocessor way to generate these */
 #define EXPAND_FACES_0(...) {};

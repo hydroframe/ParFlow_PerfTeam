@@ -39,7 +39,7 @@
  * cell is on the boundary.
  */
 
-#include "parflow.h"
+//#include "parflow.h"
 #include "llnlmath.h"
 #include "llnltyps.h"
 #include "assert.h"
@@ -1090,7 +1090,7 @@ void    RichardsJacobianEval(
                    FACE(Back,  { op = lp; }),
                    FACE(Front, { op = up; })
                    ); // End FluxBC
-      ApplyBCPatch(OverlandNoNonlinearBC,
+      ApplyBCPatch(AnyOf(OverlandNoNonlinearBC, OverlandNotSetBC),
                    PROLOGUE({
                        im = SubmatrixEltIndex(J_sub, i, j, k);
                      }),
@@ -1114,32 +1114,7 @@ void    RichardsJacobianEval(
                          }
                        }
                      })
-                   ); // End OverlandNoNonlinearBC
-      ApplyBCPatch(OverlandNotSetBC,
-                   PROLOGUE({
-                       im = SubmatrixEltIndex(J_sub, i, j, k);
-                     }),
-                   EPILOGUE({
-                       cp[im] += op[im];
-                       op[im] = 0.0;
-                     }),
-                   FACE(Left,  { op = wp; }),
-                   FACE(Right, { op = ep; }),
-                   FACE(Down,  { op = sop;}),
-                   FACE(Up,    { op = np; }),
-                   FACE(Back,  { op = lp; }),
-                   FACE(Front, {
-                       op = up;
-                       if (!ovlnd_flag)
-                       {
-                         ip = SubvectorEltIndex(p_sub, i, j, k);
-                         if ((pp[ip]) > 0.0)
-                         {
-                           ovlnd_flag =1;
-                         }
-                       }
-                     })
-                   ); // End OverlandNotSetBC
+                   ); // End AnyOf(OverlandNoNonlinearBC, OverlandNotSetBC)
       ApplyBCPatch(OverlandSimpleBC,
                    PROLOGUE({
                        im = SubmatrixEltIndex(J_sub, i, j, k);
@@ -1197,8 +1172,44 @@ void    RichardsJacobianEval(
                        }
                      })
                    ); // End OverlandSpinupBC
-      /* TODO: Need to add some sort of Post-Loop param to all for kinematic/diffusive calls */
-      ApplyBCPatch(OverlandDiffusiveBC,
+      ApplyBCPatch_WithPostcondition(OverlandKinematicBC,
+                   POSTCONDITION({
+                       PFModuleInvokeType(OverlandFlowEvalInvoke, overlandflow_module,
+                                          (grid, is, bc_struct, ipatch, problem_data, pressure,
+                                           ke_der, kw_der, kn_der, ks_der, NULL, NULL, CALCDER));
+                     }),
+                   PROLOGUE({
+                       im = SubmatrixEltIndex(J_sub, i, j, k);
+                     }),
+                   EPILOGUE({
+                       cp[im] += op[im];
+                       op[im] = 0.0;
+                     }),
+                   FACE(Left,  { op = wp; }),
+                   FACE(Right, { op = ep; }),
+                   FACE(Down,  { op = sop;}),
+                   FACE(Up,    { op = np; }),
+                   FACE(Back,  { op = lp; }),
+                   FACE(Front, {
+                       op = up;
+                       if (!ovlnd_flag)
+                       {
+                         ip = SubvectorEltIndex(p_sub, i, j, k);
+                         if ((pp[ip]) > 0.0)
+                         {
+                           ovlnd_flag = 1;
+                         }
+                       }
+                     })
+                   ); // End OverlandKinematicBC
+      ApplyBCPatch_WithPostcondition(OverlandDiffusiveBC,
+                   POSTCONDITION({
+                       PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff,
+                                          (grid, is, bc_struct, ipatch, problem_data, pressure,
+                                           ke_der, kw_der, kn_der, ks_der,
+                                           kens_der, kwns_der, knns_der, ksns_der,
+                                           NULL, NULL, CALCDER));
+                     }),
                    PROLOGUE({
                        im = SubmatrixEltIndex(J_sub, i, j, k);
                      }),
