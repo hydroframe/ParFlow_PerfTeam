@@ -81,7 +81,7 @@ typedef struct {
 
 /*--------------------------------------------------------------------------
  * Experimental Looping macro.  Does not need fdir, expects the use of
- * PROLOGUE, EPILOGUE, and FACE macros to determine physics.
+ * PROLOGUE, EPILOGUE, and FACE macros (bc_face.h) to determine physics.
  *--------------------------------------------------------------------------*/
 
 #define BCStructPatchLoopX(i, j, k, ival, bc_struct, ipatch, is,        \
@@ -105,6 +105,7 @@ typedef struct {
                      prologue, { epilogue; ival++; }, __VA_ARGS__);     \
   }
 
+// Same type of loop change as BCStructPatchLoopX but with overland offsets
 #define BCStructPatchLoopOvrlndX(i, j, k, ival, bc_struct, ipatch, is,  \
                                  prologue, epilogue, ...)               \
   {                                                                     \
