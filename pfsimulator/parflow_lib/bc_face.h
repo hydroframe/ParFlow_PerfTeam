@@ -88,7 +88,10 @@
   {                                                                 \
     bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);   \
     {                                                               \
-      body;                                                         \
+      switch(BCStructBCType(bc_struct, ipatch))                     \
+      {                                                             \
+        body;                                                       \
+      }                                                             \
     }                                                               \
   }
 

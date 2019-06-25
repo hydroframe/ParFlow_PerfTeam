@@ -493,22 +493,25 @@ void    RichardsJacobianEval(
 
     pp = SubvectorData(p_sub);
 
-    ForBCStructNumPathces(ipatch, bc_struct)
+    ForBCStructNumPatches(ipatch, bc_struct)
     {
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
       switch(BCStructBCType(bc_struct, ipatch))
       {
-        case DirichletBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            value = bc_patch_values[ival];
-            pp[ip + fdir[0] * 1 + fdir[1] * sy_v + fdir[2] * sz_v] = value;
-          });
-          break;
-        }
-      }                         /* End switch BCtype */
+        ApplyBCPatch(DirichletBC,
+                     PROLOGUE({
+                         ip = SubvectorEltIndex(p_sub, i, j, k);
+                         value = bc_patch_values[ival];
+                       }),
+                     NO_EPILOGUE,
+                     FACE(Left,  { pp[ip - 1] = value; }),
+                     FACE(Right, { pp[ip + 1] = value; }),
+                     FACE(Down,  { pp[ip - sy_v] = value; }),
+                     FACE(Up,    { pp[ip + sy_v] = value; }),
+                     FACE(Back,  { pp[ip - sz_v] = value; }),
+                     FACE(Front, { pp[ip + sz_v] = value; })
+          ); /* End DirichletBC case */
+      } /* End BCStrcutBCType switch */
     }                           /* End ipatch loop */
   }                             /* End subgrid loop */
 
@@ -1377,46 +1380,32 @@ void    RichardsJacobianEval(
                        cp[im] = 0.0;         // update JB
                        /* Now check off-diagonal nodes to see if any surface-surface connections exist */
                        /* West */
-                       k1 = (int)top_dat[itop - 1];
+                       IfSurfaceNode((int)top_dat[itop - 1], k,
+                       {
+                         wp_c[io] += wp[im];
+                         wp[im] = 0.0;
+                       });
 
-                       if (k1 >= 0)
-                       {
-                         if (k1 == k)         /*west node is also surface node */
-                         {
-                           wp_c[io] += wp[im];
-                           wp[im] = 0.0;           // update JB
-                         }
-                       }
                        /* East */
-                       k1 = (int)top_dat[itop + 1];
-                       if (k1 >= 0)
+                       IfSurfaceNode((int)top_dat[itop + 1], k,
                        {
-                         if (k1 == k)         /*east node is also surface node */
-                         {
-                           ep_c[io] += ep[im];
-                           ep[im] = 0.0;           //update JB
-                         }
-                       }
+                         ep_c[io] += ep[im];
+                         ep[im] = 0.0;
+                       });
+
                        /* South */
-                       k1 = (int)top_dat[itop - sy_v];
-                       if (k1 >= 0)
+                       IfSurfaceNode((int)top_dat[itop - sy_v], k,
                        {
-                         if (k1 == k)         /*south node is also surface node */
-                         {
-                           sop_c[io] += sop[im];
-                           sop[im] = 0.0;           //update JB
-                         }
-                       }
+                         sop_c[io] += sop[im];
+                         sop[im] = 0.0;
+                       });
+
                        /* North */
-                       k1 = (int)top_dat[itop + sy_v];
-                       if (k1 >= 0)
+                       IfSurfaceNode((int)top_dat[itop + sy_v], k,
                        {
-                         if (k1 == k)         /*north node is also surface node */
-                         {
-                           np_c[io] += np[im];
-                           np[im] = 0.0;           // Update JB
-                         }
-                       }
+                         np_c[io] += np[im];
+                         np[im] = 0.0;
+                       });
 
                        /* Now add overland contributions to JC */
                        if ((pp[ip]) > 0.0)
