@@ -235,6 +235,31 @@ typedef struct {
 
 
 /*--------------------------------------------------------------------------
+ * Experimental GrGeomSolid looping macro:
+ *   Macro for looping over the faces of a solid patch.
+ *   For use in conjunction with BCStructPatchLoopX
+ *--------------------------------------------------------------------------*/
+
+#define GrGeomPatchLoopX(i, j, k, grgeom, patch_num,            \
+                        r, ix, iy, iz, nx, ny, nz,              \
+                        prologue, epilogue, ...)                \
+  {                                                             \
+    GrGeomOctree  *PV_node;                                     \
+    double PV_ref = pow(2.0, r);                                \
+                                                                \
+                                                                \
+    i = GrGeomSolidOctreeIX(grgeom) * (int)PV_ref;              \
+    j = GrGeomSolidOctreeIY(grgeom) * (int)PV_ref;              \
+    k = GrGeomSolidOctreeIZ(grgeom) * (int)PV_ref;              \
+    GrGeomOctreeFaceLoopX(i, j, k, fdir, PV_node,               \
+                         GrGeomSolidPatch(grgeom, patch_num),   \
+                         GrGeomSolidOctreeBGLevel(grgeom) + r,  \
+                          ix, iy, iz, nx, ny, nz,               \
+                          prologue, epilogue, __VA_ARGS__);     \
+  }
+
+
+/*--------------------------------------------------------------------------
  * GrGeomSolid looping macro:
  * Macro for looping over the inside of a solid as a set of boxes.
  * This will pick both active and inactive cells along the boundary but
