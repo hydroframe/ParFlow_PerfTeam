@@ -2105,6 +2105,12 @@ double      *FBx_dat, *FBy_dat, *FBz_dat;     //@RMM
 
           break;
         } /* End OverlandDiffusiveBC */
+
+        default:
+        {
+          fprintf(stderr, "Error, got BC Type: %d\n", BCStructBCType(bc_struct, ipatch));
+          exit(-1);
+        }
       }        /* End switch BCtype */
     }          /* End ipatch loop */
   }            /* End subgrid loop */
