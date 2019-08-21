@@ -530,7 +530,7 @@ void    RichardsJacobianEval(
 
         case OverlandBC:
         {
-          fprintf(stderr, "Was %d\n", BCStructBCType(bc_struct, ipatch));
+          //fprintf(stderr, "Was %d\n", BCStructBCType(bc_struct, ipatch));
           switch(public_xtra->type)
           {
             case not_set:
@@ -548,14 +548,14 @@ void    RichardsJacobianEval(
                 BCStructBCType(bc_struct, ipatch) = OverlandSpinupBC;
               } else {
                 if (diffusive == 0) {
-                  BCStructBCType(bc_struct, ipatch) = OverlandKinematicBC;
+                  BCStructBCType(bc_struct, ipatch) = OverlandKinematic_OldBC;
                 } else {
                   BCStructBCType(bc_struct, ipatch) = OverlandDiffusiveBC;
                 }
               }
             }
           }
-          fprintf(stderr, "Set to %d\n", BCStructBCType(bc_struct, ipatch));
+          //fprintf(stderr, "Set to %d\n", BCStructBCType(bc_struct, ipatch));
           //exit(-1);
           break;
         }
@@ -1475,296 +1475,274 @@ void    RichardsJacobianEval(
 
       top_dat = SubvectorData(top_sub);
 
-      for (ipatch = 0; ipatch < BCStructNumPatches(bc_struct); ipatch++)
+      Do_BCContrib(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values,
       {
-        switch (BCStructBCType(bc_struct, ipatch))
-        {
-          /* Fall through cases for new Overland types */
-          case OverlandKinematicBC:
-          {
-            BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-            {
-              if (fdir[2] == 1)
-              {
-                /* Loop over boundary patches to build JC matrix.
-                 */
-                io = SubmatrixEltIndex(J_sub, i, j, iz);
-                io1 = SubvectorEltIndex(sx_sub, i, j, 0);
-                itop = SubvectorEltIndex(top_sub, i, j, 0);
+        ApplyBCPatch(OverlandKinematicBC,
+                     NO_PROLOGUE,
+                     NO_EPILOGUE,
+                     FACE(Front,
+                     {
+                       /* Loop over boundary patches to build JC matrix. */
+                       io = SubmatrixEltIndex(J_sub, i, j, iz);
+                       io1 = SubvectorEltIndex(sx_sub, i, j, 0);
+                       itop = SubvectorEltIndex(top_sub, i, j, 0);
 
-                /* Update JC */
-                ip = SubvectorEltIndex(p_sub, i, j, k);
-                im = SubmatrixEltIndex(J_sub, i, j, k);
+                       /* Update JC */
+                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                       im = SubmatrixEltIndex(J_sub, i, j, k);
 
-                /* First put contributions from subsurface diagonal onto diagonal of JC */
-                cp_c[io] = cp[im];
-                cp[im] = 0.0;         // update JB
-                /* Now check off-diagonal nodes to see if any surface-surface connections exist */
-                /* West */
-                k1 = (int)top_dat[itop - 1];
+                       /* First put contributions from subsurface diagonal onto diagonal of JC */
+                       cp_c[io] = cp[im];
+                       cp[im] = 0.0;
+                       /* Now check off-diagonal nodes to see if any surface-surface connections exist */
+                       /* West */
+                       k1 = (int)top_dat[itop - 1];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*west node is also surface node */
+                         {
+                           wp_c[io] += wp[im];
+                           wp[im] = 0.0;           // update JB
+                         }
+                       }
+                       /* East */
+                       k1 = (int)top_dat[itop + 1];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*east node is also surface node */
+                         {
+                           ep_c[io] += ep[im];
+                           ep[im] = 0.0;           //update JB
+                         }
+                       }
+                       /* South */
+                       k1 = (int)top_dat[itop - sy_v];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*south node is also surface node */
+                         {
+                           sop_c[io] += sop[im];
+                           sop[im] = 0.0;           //update JB
+                         }
+                       }
+                       /* North */
+                       k1 = (int)top_dat[itop + sy_v];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*north node is also surface node */
+                         {
+                           np_c[io] += np[im];
+                           np[im] = 0.0;           // Update JB
+                         }
+                       }
 
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*west node is also surface node */
-                  {
-                    wp_c[io] += wp[im];
-                    wp[im] = 0.0;           // update JB
-                  }
-                }
-                /* East */
-                k1 = (int)top_dat[itop + 1];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*east node is also surface node */
-                  {
-                    ep_c[io] += ep[im];
-                    ep[im] = 0.0;           //update JB
-                  }
-                }
-                /* South */
-                k1 = (int)top_dat[itop - sy_v];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*south node is also surface node */
-                  {
-                    sop_c[io] += sop[im];
-                    sop[im] = 0.0;           //update JB
-                  }
-                }
-                /* North */
-                k1 = (int)top_dat[itop + sy_v];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*north node is also surface node */
-                  {
-                    np_c[io] += np[im];
-                    np[im] = 0.0;           // Update JB
-                  }
-                }
+                       /* Now add overland contributions to JC */
+                       if ((pp[ip]) > 0.0)
+                       {
+                         /*diagonal term */
+                         cp_c[io] += (vol / dz) + (vol / ffy) * dt * (ke_der[io1] - kw_der[io1])
+                                     + (vol / ffx) * dt * (kn_der[io1] - ks_der[io1]);
+                       }
 
-                /* Now add overland contributions to JC */
-                if ((pp[ip]) > 0.0)
-                {
-                  /*diagonal term */
-                  cp_c[io] += (vol / dz) + (vol / ffy) * dt * (ke_der[io1] - kw_der[io1])
-                              + (vol / ffx) * dt * (kn_der[io1] - ks_der[io1]);
-                }
+                       /*west term */
+                       wp_c[io] -= (vol / ffy) * dt * (ke_der[io1 - 1]);
 
-                  /*west term */
-                  wp_c[io] -= (vol / ffy) * dt * (ke_der[io1 - 1]);
+                       /*East term */
+                       ep_c[io] += (vol / ffy) * dt * (kw_der[io1 + 1]);
 
-                  /*East term */
-                  ep_c[io] += (vol / ffy) * dt * (kw_der[io1 + 1]);
+                       /*south term */
+                       sop_c[io] -= (vol / ffx) * dt * (kn_der[io1 - sy_v]);
 
-                  /*south term */
-                  sop_c[io] -= (vol / ffx) * dt * (kn_der[io1 - sy_v]);
+                       /*north term */
+                       np_c[io] += (vol / ffx) * dt * (ks_der[io1 + sy_v]);
+                     }));
 
-                  /*north term */
-                  np_c[io] += (vol / ffx) * dt * (ks_der[io1 + sy_v]);
+        ApplyBCPatch(OverlandDiffusiveBC,
+                     NO_PROLOGUE,
+                     NO_EPILOGUE,
+                     FACE(Front,
+                     {
+                       /* Loop over boundary patches to build JC matrix.
+                        */
+                       io = SubmatrixEltIndex(J_sub, i, j, iz);
+                       io1 = SubvectorEltIndex(sx_sub, i, j, 0);
+                       itop = SubvectorEltIndex(top_sub, i, j, 0);
 
-              }
-            });
-            break;
-          }
-          case OverlandDiffusiveBC:
-          {
-            BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-            {
-              if (fdir[2] == 1)
-              {
-                /* Loop over boundary patches to build JC matrix.
-                 */
-                io = SubmatrixEltIndex(J_sub, i, j, iz);
-                io1 = SubvectorEltIndex(sx_sub, i, j, 0);
-                itop = SubvectorEltIndex(top_sub, i, j, 0);
+                       /* Update JC */
+                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                       im = SubmatrixEltIndex(J_sub, i, j, k);
 
-                /* Update JC */
-                ip = SubvectorEltIndex(p_sub, i, j, k);
-                im = SubmatrixEltIndex(J_sub, i, j, k);
+                       /* First put contributions from subsurface diagonal onto diagonal of JC */
+                       cp_c[io] = cp[im];
+                       cp[im] = 0.0;         // update JB
+                       /* Now check off-diagonal nodes to see if any surface-surface connections exist */
+                       /* West */
+                       k1 = (int)top_dat[itop - 1];
 
-                /* First put contributions from subsurface diagonal onto diagonal of JC */
-                cp_c[io] = cp[im];
-                cp[im] = 0.0;         // update JB
-                /* Now check off-diagonal nodes to see if any surface-surface connections exist */
-                /* West */
-                k1 = (int)top_dat[itop - 1];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*west node is also surface node */
+                         {
+                           wp_c[io] += wp[im];
+                           wp[im] = 0.0;           // update JB
+                         }
+                       }
+                       /* East */
+                       k1 = (int)top_dat[itop + 1];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*east node is also surface node */
+                         {
+                           ep_c[io] += ep[im];
+                           ep[im] = 0.0;           //update JB
+                         }
+                       }
+                       /* South */
+                       k1 = (int)top_dat[itop - sy_v];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*south node is also surface node */
+                         {
+                           sop_c[io] += sop[im];
+                           sop[im] = 0.0;           //update JB
+                         }
+                       }
+                       /* North */
+                       k1 = (int)top_dat[itop + sy_v];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*north node is also surface node */
+                         {
+                           np_c[io] += np[im];
+                           np[im] = 0.0;           // Update JB
+                         }
+                       }
 
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*west node is also surface node */
-                  {
-                    wp_c[io] += wp[im];
-                    wp[im] = 0.0;           // update JB
-                  }
-                }
-                /* East */
-                k1 = (int)top_dat[itop + 1];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*east node is also surface node */
-                  {
-                    ep_c[io] += ep[im];
-                    ep[im] = 0.0;           //update JB
-                  }
-                }
-                /* South */
-                k1 = (int)top_dat[itop - sy_v];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*south node is also surface node */
-                  {
-                    sop_c[io] += sop[im];
-                    sop[im] = 0.0;           //update JB
-                  }
-                }
-                /* North */
-                k1 = (int)top_dat[itop + sy_v];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*north node is also surface node */
-                  {
-                    np_c[io] += np[im];
-                    np[im] = 0.0;           // Update JB
-                  }
-                }
+                       /* Now add overland contributions to JC */
+                       if ((pp[ip]) > 0.0)
+                       {
+                         /*diagonal term */
+                         cp_c[io] += (vol / dz) + (vol / ffy) * dt * (ke_der[io1] - kw_der[io1])
+                                     + (vol / ffx) * dt * (kn_der[io1] - ks_der[io1]);
+                       }
+                       /*west term */
+                       wp_c[io] -= (vol / ffy) * dt * (kwns_der[io1]);
 
-                /* Now add overland contributions to JC */
-                if ((pp[ip]) > 0.0)
-                {
-                  /*diagonal term */
-                  cp_c[io] += (vol / dz) + (vol / ffy) * dt * (ke_der[io1] - kw_der[io1])
-                              + (vol / ffx) * dt * (kn_der[io1] - ks_der[io1]);
-                }
-                /*west term */
-                wp_c[io] -= (vol / ffy) * dt * (kwns_der[io1]);
+                       /*East term */
+                       ep_c[io] += (vol / ffy) * dt * (kens_der[io1]);
 
-                /*East term */
-                ep_c[io] += (vol / ffy) * dt * (kens_der[io1]);
+                       /*south term */
+                       sop_c[io] -= (vol / ffx) * dt * (ksns_der[io1]);
 
-                /*south term */
-                sop_c[io] -= (vol / ffx) * dt * (ksns_der[io1]);
+                       /*north term */
+                       np_c[io] += (vol / ffx) * dt * (knns_der[io1]);
+                     }));
+        ApplyBCPatch(AnyOf(OverlandBC, OverlandSimpleBC,
+                           OverlandNoNonlinearBC, OverlandNotSetBC,
+                           OverlandKinematic_OldBC),
+                     NO_PROLOGUE,
+                     NO_EPILOGUE,
+                     FACE(Front,
+                     {
+                       /* Loop over boundary patches to build JC matrix.
+                        */
+                       io = SubmatrixEltIndex(J_sub, i, j, iz);
+                       io1 = SubvectorEltIndex(sx_sub, i, j, 0);
+                       itop = SubvectorEltIndex(top_sub, i, j, 0);
 
-                /*north term */
-                np_c[io] += (vol / ffx) * dt * (knns_der[io1]);
+                       /* Update JC */
+                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                       im = SubmatrixEltIndex(J_sub, i, j, k);
 
-              }
-            });
-            break;
-          }
-          case OverlandBC:
-          case OverlandSimpleBC:
-          case OverlandNoNonlinearBC:
-          case OverlandNotSetBC:
-          case OverlandKinematic_OldBC:
-          case OverlandDiffusive_OldBC:
-          {
-            BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-            {
-              if (fdir[2] == 1)
-              {
-                /* Loop over boundary patches to build JC matrix.
-                 */
-                io = SubmatrixEltIndex(J_sub, i, j, iz);
-                io1 = SubvectorEltIndex(sx_sub, i, j, 0);
-                itop = SubvectorEltIndex(top_sub, i, j, 0);
+                       /* First put contributions from subsurface diagonal onto diagonal of JC */
+                       cp_c[io] = cp[im];
+                       cp[im] = 0.0;         // update JB
+                       /* Now check off-diagonal nodes to see if any surface-surface connections exist */
+                       /* West */
+                       k1 = (int)top_dat[itop - 1];
 
-                /* Update JC */
-                ip = SubvectorEltIndex(p_sub, i, j, k);
-                im = SubmatrixEltIndex(J_sub, i, j, k);
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*west node is also surface node */
+                         {
+                           wp_c[io] += wp[im];
+                           wp[im] = 0.0;           // update JB
+                         }
+                       }
+                       /* East */
+                       k1 = (int)top_dat[itop + 1];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*east node is also surface node */
+                         {
+                           ep_c[io] += ep[im];
+                           ep[im] = 0.0;           //update JB
+                         }
+                       }
+                       /* South */
+                       k1 = (int)top_dat[itop - sy_v];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*south node is also surface node */
+                         {
+                           sop_c[io] += sop[im];
+                           sop[im] = 0.0;           //update JB
+                         }
+                       }
+                       /* North */
+                       k1 = (int)top_dat[itop + sy_v];
+                       if (k1 >= 0)
+                       {
+                         if (k1 == k)         /*north node is also surface node */
+                         {
+                           np_c[io] += np[im];
+                           np[im] = 0.0;           // Update JB
+                         }
+                       }
 
-                /* First put contributions from subsurface diagonal onto diagonal of JC */
-                cp_c[io] = cp[im];
-                cp[im] = 0.0;         // update JB
-                /* Now check off-diagonal nodes to see if any surface-surface connections exist */
-                /* West */
-                k1 = (int)top_dat[itop - 1];
+                       /* Now add overland contributions to JC */
+                       if ((pp[ip]) > 0.0)
+                       {
+                         /*diagonal term */
+                         cp_c[io] += (vol / dz) + (vol / ffy) * dt * (ke_der[io1] - kw_der[io1])
+                                     + (vol / ffx) * dt * (kn_der[io1] - ks_der[io1]);
+                       }
+                       else
+                       {
+                         // Laura's version
+                         cp_c[io] += 0.0 + dt * (vol / dz) * (public_xtra->SpinupDampP1 * exp(pfmin(pp[ip], 0.0) * public_xtra->SpinupDampP1) * public_xtra->SpinupDampP2); //NBE
+                       }
 
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*west node is also surface node */
-                  {
-                    wp_c[io] += wp[im];
-                    wp[im] = 0.0;           // update JB
-                  }
-                }
-                /* East */
-                k1 = (int)top_dat[itop + 1];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*east node is also surface node */
-                  {
-                    ep_c[io] += ep[im];
-                    ep[im] = 0.0;           //update JB
-                  }
-                }
-                /* South */
-                k1 = (int)top_dat[itop - sy_v];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*south node is also surface node */
-                  {
-                    sop_c[io] += sop[im];
-                    sop[im] = 0.0;           //update JB
-                  }
-                }
-                /* North */
-                k1 = (int)top_dat[itop + sy_v];
-                if (k1 >= 0)
-                {
-                  if (k1 == k)         /*north node is also surface node */
-                  {
-                    np_c[io] += np[im];
-                    np[im] = 0.0;           // Update JB
-                  }
-                }
+                       if (diffusive == 0)
+                       {
+                         /*west term */
+                         wp_c[io] -= (vol / ffy) * dt * (ke_der[io1 - 1]);
 
-                /* Now add overland contributions to JC */
-                if ((pp[ip]) > 0.0)
-                {
-                  /*diagonal term */
-                  cp_c[io] += (vol / dz) + (vol / ffy) * dt * (ke_der[io1] - kw_der[io1])
-                              + (vol / ffx) * dt * (kn_der[io1] - ks_der[io1]);
-                }
-                else
-                {
-                  // Laura's version
-                  cp_c[io] += 0.0 + dt * (vol / dz) * (public_xtra->SpinupDampP1 * exp(pfmin(pp[ip], 0.0) * public_xtra->SpinupDampP1) * public_xtra->SpinupDampP2); //NBE
-                }
+                         /*East term */
+                         ep_c[io] += (vol / ffy) * dt * (kw_der[io1 + 1]);
 
-                if (diffusive == 0)
-                {
-                  /*west term */
-                  wp_c[io] -= (vol / ffy) * dt * (ke_der[io1 - 1]);
+                         /*south term */
+                         sop_c[io] -= (vol / ffx) * dt * (kn_der[io1 - sy_v]);
 
-                  /*East term */
-                  ep_c[io] += (vol / ffy) * dt * (kw_der[io1 + 1]);
+                         /*north term */
+                         np_c[io] += (vol / ffx) * dt * (ks_der[io1 + sy_v]);
+                       }
+                       else
+                       {
+                         /*west term */
+                         wp_c[io] -= (vol / ffy) * dt * (kwns_der[io1]);
 
-                  /*south term */
-                  sop_c[io] -= (vol / ffx) * dt * (kn_der[io1 - sy_v]);
+                         /*East term */
+                         ep_c[io] += (vol / ffy) * dt * (kens_der[io1]);
 
-                  /*north term */
-                  np_c[io] += (vol / ffx) * dt * (ks_der[io1 + sy_v]);
-                }
-                else
-                {
-                  /*west term */
-                  wp_c[io] -= (vol / ffy) * dt * (kwns_der[io1]);
+                         /*south term */
+                         sop_c[io] -= (vol / ffx) * dt * (ksns_der[io1]);
 
-                  /*East term */
-                  ep_c[io] += (vol / ffy) * dt * (kens_der[io1]);
-
-                  /*south term */
-                  sop_c[io] -= (vol / ffx) * dt * (ksns_der[io1]);
-
-                  /*north term */
-                  np_c[io] += (vol / ffx) * dt * (knns_der[io1]);
-                }
-              }
-            });
-            break;
-          }
-        }         /* End switch BCtype */
-      }           /* End ipatch loop */
+                         /*north term */
+                         np_c[io] += (vol / ffx) * dt * (knns_der[io1]);
+                       }
+                     }));
+      });           /* End ipatch loop */
     }             /* End subgrid loop */
   }
 

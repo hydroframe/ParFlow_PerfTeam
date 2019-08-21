@@ -32,6 +32,8 @@
 //#include "math.h"
 #include "float.h"
 
+#include "new_bc.h"
+
 /*---------------------------------------------------------------------
  * Define module structures
  *---------------------------------------------------------------------*/
@@ -902,524 +904,486 @@ double      *FBx_dat, *FBy_dat, *FBz_dat;     //@RMM
     z_mult_dat = SubvectorData(z_mult_sub);
 
 
-
-    for (ipatch = 0; ipatch < BCStructNumPatches(bc_struct); ipatch++)
+    Do_BCContrib(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values,
     {
-      bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
-
-      switch (BCStructBCType(bc_struct, ipatch))
-      {
-        case DirichletBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
-
-            value = bc_patch_values[ival];
-            x_dir_g = 0.0;
-            y_dir_g = 0.0;
-            z_dir_g = 1.0;
-
-            del_x_slope = (1.0 / cos(atan(x_ssl_dat[io])));
-            del_y_slope = (1.0 / cos(atan(y_ssl_dat[io])));
-
-            del_x_slope = 1.0;
-            del_y_slope = 1.0;
-
-
-            /* Don't currently do upstream weighting on boundaries */
-
-            if (fdir[0])
-            {
-              switch (fdir[0])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - 1] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip - 1], pp[ip], permxp[ip - 1], permxp[ip])
-                          * (diff / dx * del_x_slope)
-                          * RPMean(pp[ip - 1], pp[ip],
-                                   rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope *
-                           PMean(pp[ip - 1], pp[ip],
-                                 permxp[ip - 1], permxp[ip])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
-                                    rpp[ip] * dp[ip])
-                           / viscosity;
-
-                  diff = value - pp[ip];
-                  u_new = RPMean(value, pp[ip],
-                                 rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip]);
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + 1];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip], pp[ip + 1], permxp[ip], permxp[ip + 1])
-                          * (diff / dx * del_x_slope)
-                          * RPMean(pp[ip], pp[ip + 1],
-                                   rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip], pp[ip + 1],
-                                   permxp[ip], permxp[ip + 1])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
-                                    rpp[ip + 1] * dp[ip + 1])
-                           / viscosity;
-
-                  diff = pp[ip] - value;
-                  u_new = RPMean(pp[ip], value,
-                                 rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1]);
-                  break;
-              }
-              u_new = u_new * z_mult_dat[ip] * ffx * del_y_slope
-                      * (permxp[ip] / viscosity)
-                      * 2.0 * (diff / dx);
-            }
-            else if (fdir[1])
-            {
-              switch (fdir[1])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - sy_p] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip - sy_p], pp[ip],
-                                  permyp[ip - sy_p], permyp[ip])
-                          * (diff / dy * del_y_slope)
-                          * RPMean(pp[ip - sy_p], pp[ip],
-                                   rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope *
-                           PMean(pp[ip], pp[ip - sy_p], permyp[ip],
-                                 permyp[ip - sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip - sy_p] * dp[ip - sy_p])
-                           / viscosity;
-
-
-                  diff = value - pp[ip];
-                  u_new = RPMean(value, pp[ip],
-                                 rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip]);
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + sy_p];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip], pp[ip + sy_p],
-                                  permyp[ip], permyp[ip + sy_p])
-                          * (diff / dy * del_y_slope)
-                          * RPMean(pp[ip], pp[ip + sy_p],
-                                   rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope
-                           * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
-                                   permyp[ip + sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip + sy_p] * dp[ip + sy_p])
-                           / viscosity;
-
-
-                  diff = pp[ip] - value;
-                  u_new = RPMean(pp[ip], value,
-                                 rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p]);
-                  break;
-              }
-              u_new = u_new * z_mult_dat[ip] * ffy * del_x_slope * (permyp[ip] / viscosity)
-                      * 2.0 * (diff / dy);
-            }
-            else if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case -1:
-                  {
-                    dir = -1;
-                    sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]); //RMM
-
-                    lower_cond = pp[ip - sz_p] / sep
-                                 - (z_mult_dat[ip - sz_p] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip - sz_p] * gravity *
-                                 z_dir_g;
-
-                    upper_cond = pp[ip] / sep + (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip] * gravity *
-                                 z_dir_g;
-
-                    diff = (lower_cond - upper_cond);
-
-                    u_old = ffz * del_x_slope * del_y_slope
-                            * PMeanDZ(permzp[ip - sz_p], permzp[ip],
-                                      z_mult_dat[ip - sz_p], z_mult_dat[ip])
-                            * diff
-                            * RPMean(lower_cond, upper_cond,
-                                     rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
-                            / viscosity;
-
-                    sep = dz * z_mult_dat[ip] / 2.0;
-
-                    lower_cond = value / sep - 0.25 * dp[ip] * gravity;
-                    upper_cond = pp[ip] / sep + 0.25 * dp[ip] * gravity;
-                    diff = (lower_cond - upper_cond);
-                    u_new = RPMean(lower_cond, upper_cond,
-                                   rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip]);
-                    break;
-                  }         /* End case -1 */
-
-                case  1:
-                  {
-                    dir = 1;
-
-                    /* Calculate upper face velocity.
-                     * @RMM added cos to g term to test terrain-following grid
-                     */
-
-                    sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
-
-                    lower_cond = pp[ip] / sep - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
-                                 z_dir_g;
-
-                    upper_cond = pp[ip + sz_p] / sep
-                                 + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p]))
-                                 * dp[ip + sz_p] * gravity * z_dir_g;
-
-                    diff = (lower_cond - upper_cond);
-
-
-                    u_old = ffz * del_x_slope * del_y_slope
-                            * PMeanDZ(permzp[ip], permzp[ip + sz_p],
-                                      z_mult_dat[ip], z_mult_dat[ip + sz_p])
-                            * diff
-                            * RPMean(lower_cond, upper_cond,
-                                     rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
-                            / viscosity;
-
-                    sep = dz * z_mult_dat[ip] / 2.0;
-
-                    lower_cond = (pp[ip] / sep) - 0.25 * dp[ip] * gravity * z_dir_g;
-                    upper_cond = (value / sep) + 0.25 * dp[ip] * gravity * z_dir_g;
-
-                    diff = lower_cond - upper_cond;
-                    u_new = RPMean(lower_cond, upper_cond,
-                                   rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p]);
-                    break;
-                  }         /* End case 1 */
-              }
-              u_new = u_new * ffz * del_x_slope * del_y_slope *
-                      (permzp[ip] / viscosity)
-                      * 2.0 * diff;
-            }
-
-            /* Remove the boundary term computed above */
-            fp[ip] -= dt * dir * u_old;
-
-            /* Add the correct boundary term */
-            fp[ip] += dt * dir * u_new;
-          });
-
-          break;
-        }
-
-        case FluxBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
-
-            x_dir_g = 0.0;
-            y_dir_g = 0.0;
-            z_dir_g = 1.0;
-
-            del_x_slope = 1.0;
-            del_y_slope = 1.0;
-
-            if (fdir[0])
-            {
-              switch (fdir[0])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - 1] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip - 1], pp[ip],
-                                  permxp[ip - 1], permxp[ip])
-                          * (diff / dx * del_x_slope)
-                          * RPMean(pp[ip - 1], pp[ip],
-                                   rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip - 1], pp[ip],
-                                   permxp[ip - 1], permxp[ip])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
-                                    rpp[ip] * dp[ip])
-                           / viscosity;
-
-
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + 1];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip], pp[ip + 1],
-                                  permxp[ip], permxp[ip + 1])
-                          * (diff / dx * del_x_slope)
-                          * RPMean(pp[ip], pp[ip + 1],
-                                   rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip], pp[ip + 1],
-                                   permxp[ip], permxp[ip + 1])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
-                                    rpp[ip + 1] * dp[ip + 1])
-                           / viscosity;
-
-                  break;
-              }
-              u_new = z_mult_dat[ip] * ffx;
-            }
-            else if (fdir[1])
-            {
-              switch (fdir[1])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - sy_p] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip - sy_p], pp[ip],
-                                  permyp[ip - sy_p], permyp[ip])
-                          * (diff / dy)
-                          * RPMean(pp[ip - sy_p], pp[ip],
-                                   rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope *
-                           PMean(pp[ip], pp[ip - sy_p], permyp[ip],
-                                 permyp[ip - sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip - sy_p] * dp[ip - sy_p])
-                           / viscosity;
-
-
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + sy_p];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip], pp[ip + sy_p],
-                                  permyp[ip], permyp[ip + sy_p])
-                          * (diff / dy)
-                          * RPMean(pp[ip], pp[ip + sy_p],
-                                   rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope
-                           * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
-                                   permyp[ip + sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip + sy_p] * dp[ip + sy_p])
-                           / viscosity;
-
-                  break;
-              }
-              u_new = z_mult_dat[ip] * ffy * del_x_slope;
-            }
-            else if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case -1:
-                  dir = -1;
-                  sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]); //RMM
-
-                  lower_cond = (pp[ip - sz_p] / sep)
-                               - (z_mult_dat[ip - sz_p] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip - sz_p] * gravity *
-                               z_dir_g;
-
-                  upper_cond = (pp[ip] / sep) + (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip] * gravity *
-                               z_dir_g;
-
-                  diff = lower_cond - upper_cond;
-                  u_old = ffz * del_x_slope * del_y_slope
-                          * PMeanDZ(permzp[ip - sz_p], permzp[ip],
-                                    z_mult_dat[ip - sz_p], z_mult_dat[ip])
-                          * diff
-                          * RPMean(lower_cond, upper_cond,
-                                   rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
-                          / viscosity;
-                  break;
-
-                case  1:
-                  dir = 1;
-                  sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
-
-                  lower_cond = (pp[ip] / sep) - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
-                               z_dir_g;
-
-                  upper_cond = (pp[ip + sz_p] / sep)
-                               + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip + sz_p] * gravity *
-                               z_dir_g;
-
-                  diff = lower_cond - upper_cond;
-                  u_old = ffz * del_x_slope * del_y_slope
-                          * PMeanDZ(permzp[ip], permzp[ip + sz_p],
-                                    z_mult_dat[ip], z_mult_dat[ip + sz_p])
-                          * diff
-                          * RPMean(lower_cond, upper_cond,
-                                   rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
-                          / viscosity;
-
-
-
-                  break;
-              }
-              u_new = ffz * del_x_slope * del_y_slope;
-            }
-
-            /* Remove the boundary term computed above */
-            fp[ip] -= dt * dir * u_old;
-            /* Add the correct boundary term */
-            u_new = u_new * bc_patch_values[ival];
-            fp[ip] += dt * dir * u_new;
-          });
-
-          break;
-        }         /* End fluxbc case */
-
-        case OverlandBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
-
-            x_dir_g = 0.0;
-            y_dir_g = 0.0;
-            z_dir_g = 1.0;
-
-            del_x_slope = 1.0;
-            del_y_slope = 1.0;
-
-            if (fdir[0])
-            {
-              switch (fdir[0])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - 1] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip - 1], pp[ip],
-                                  permxp[ip - 1], permxp[ip])
-                          * (diff / dx)
-                          * RPMean(pp[ip - 1], pp[ip],
-                                   rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip - 1], pp[ip],
-                                   permxp[ip - 1], permxp[ip])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
-                                    rpp[ip] * dp[ip])
-                           / viscosity;
-
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + 1];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip], pp[ip + 1],
-                                  permxp[ip], permxp[ip + 1])
-                          * (diff / dx)
-                          * RPMean(pp[ip], pp[ip + 1],
-                                   rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip], pp[ip + 1],
-                                   permxp[ip], permxp[ip + 1])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
-                                    rpp[ip + 1] * dp[ip + 1])
-                           / viscosity;
-                  break;
-              }
-              u_new = z_mult_dat[ip] * ffx * del_y_slope;
-            }
-            else if (fdir[1])
-            {
-              switch (fdir[1])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - sy_p] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip - sy_p], pp[ip],
-                                  permyp[ip - sy_p], permyp[ip])
-                          * (diff / dy)
-                          * RPMean(pp[ip - sy_p], pp[ip],
-                                   rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope *
-                           PMean(pp[ip], pp[ip - sy_p], permyp[ip],
-                                 permyp[ip - sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip - sy_p] * dp[ip - sy_p])
-                           / viscosity;
-
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + sy_p];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip], pp[ip + sy_p],
-                                  permyp[ip], permyp[ip + sy_p])
-                          * (diff / dy)
-                          * RPMean(pp[ip], pp[ip + sy_p],
-                                   rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope
-                           * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
-                                   permyp[ip + sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip + sy_p] * dp[ip + sy_p])
-                           / viscosity;
-
-                  break;
-              }
-              u_new = z_mult_dat[ip] * ffy * del_x_slope;
-            }
-            else if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case -1:
-                  dir = -1;
+      ApplyBCPatch(DirichletBC,
+                   PROLOGUE({
+                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                       io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
+
+                       value = bc_patch_values[ival];
+                       x_dir_g = 0.0;
+                       y_dir_g = 0.0;
+                       z_dir_g = 1.0;
+
+                       del_x_slope = (1.0 / cos(atan(x_ssl_dat[io])));
+                       del_y_slope = (1.0 / cos(atan(y_ssl_dat[io])));
+
+                       del_x_slope = 1.0;
+                       del_y_slope = 1.0;
+                     }),
+                   EPILOGUE({
+                       fp[ip] -= dt * dir * u_old;
+                       fp[ip] += dt * dir * u_new;
+                     }),
+                   FACE(Left,
+                   {
+                     dir = -1;
+                     diff = pp[ip - 1] - pp[ip];
+                     u_old = z_mult_dat[ip] * ffx * del_y_slope
+                             * PMean(pp[ip - 1], pp[ip], permxp[ip - 1], permxp[ip])
+                             * (diff / dx * del_x_slope)
+                             * RPMean(pp[ip - 1], pp[ip],
+                                      rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
+                             / viscosity;
+
+                     u_old += z_mult_dat[ip] * ffx * del_y_slope *
+                              PMean(pp[ip - 1], pp[ip],
+                                    permxp[ip - 1], permxp[ip])
+                              * (-x_dir_g)
+                              * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
+                                       rpp[ip] * dp[ip])
+                              / viscosity;
+
+                     diff = value - pp[ip];
+                     u_new = RPMean(value, pp[ip],
+                                    rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip]);
+                     u_new = u_new * z_mult_dat[ip] * ffx * del_y_slope
+                             * (permxp[ip] / viscosity)
+                             * 2.0 * (diff / dx);
+                   }),
+                   FACE(Right,
+                   {
+                     dir = 1;
+                     diff = pp[ip] - pp[ip + 1];
+                     u_old = z_mult_dat[ip] * ffx * del_y_slope
+                             * PMean(pp[ip], pp[ip + 1], permxp[ip], permxp[ip + 1])
+                             * (diff / dx * del_x_slope)
+                             * RPMean(pp[ip], pp[ip + 1],
+                                      rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
+                             / viscosity;
+
+                     u_old += z_mult_dat[ip] * ffx * del_y_slope
+                              * PMean(pp[ip], pp[ip + 1],
+                                      permxp[ip], permxp[ip + 1])
+                              * (-x_dir_g)
+                              * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
+                                       rpp[ip + 1] * dp[ip + 1])
+                              / viscosity;
+
+                     diff = pp[ip] - value;
+                     u_new = RPMean(pp[ip], value,
+                                    rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1]);
+                     u_new = u_new * z_mult_dat[ip] * ffx * del_y_slope
+                             * (permxp[ip] / viscosity)
+                             * 2.0 * (diff / dx);
+                   }),
+                   FACE(Down,
+                   {
+                     dir = -1;
+                     diff = pp[ip - sy_p] - pp[ip];
+                     u_old = z_mult_dat[ip] * ffy * del_x_slope
+                             * PMean(pp[ip - sy_p], pp[ip],
+                                     permyp[ip - sy_p], permyp[ip])
+                             * (diff / dy * del_y_slope)
+                             * RPMean(pp[ip - sy_p], pp[ip],
+                                      rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
+                             / viscosity;
+
+                     u_old += z_mult_dat[ip] * ffy * del_x_slope *
+                              PMean(pp[ip], pp[ip - sy_p], permyp[ip],
+                                    permyp[ip - sy_p])
+                              * (-y_dir_g)
+                              * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
+                                       rpp[ip - sy_p] * dp[ip - sy_p])
+                              / viscosity;
+
+
+                     diff = value - pp[ip];
+                     u_new = RPMean(value, pp[ip],
+                                    rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip]);
+                     u_new = u_new * z_mult_dat[ip] * ffy * del_x_slope * (permyp[ip] / viscosity)
+                             * 2.0 * (diff / dy);
+                   }),
+                   FACE(Up,
+                   {
+                     dir = 1;
+                     diff = pp[ip] - pp[ip + sy_p];
+                     u_old = z_mult_dat[ip] * ffy * del_x_slope
+                             * PMean(pp[ip], pp[ip + sy_p],
+                                     permyp[ip], permyp[ip + sy_p])
+                             * (diff / dy * del_y_slope)
+                             * RPMean(pp[ip], pp[ip + sy_p],
+                                      rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
+                             / viscosity;
+
+                     u_old += z_mult_dat[ip] * ffy * del_x_slope
+                              * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
+                                      permyp[ip + sy_p])
+                              * (-y_dir_g)
+                              * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
+                                       rpp[ip + sy_p] * dp[ip + sy_p])
+                              / viscosity;
+
+
+                     diff = pp[ip] - value;
+                     u_new = RPMean(pp[ip], value,
+                                    rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p]);
+                     u_new = u_new * z_mult_dat[ip] * ffy * del_x_slope * (permyp[ip] / viscosity)
+                             * 2.0 * (diff / dy);
+                   }),
+                   FACE(Back,
+                   {
+                     dir = -1;
+                     sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]); //RMM
+
+                     lower_cond = pp[ip - sz_p] / sep
+                                  - (z_mult_dat[ip - sz_p] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip - sz_p] * gravity *
+                                  z_dir_g;
+
+                     upper_cond = pp[ip] / sep + (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip] * gravity *
+                                  z_dir_g;
+
+                     diff = (lower_cond - upper_cond);
+
+                     u_old = ffz * del_x_slope * del_y_slope
+                             * PMeanDZ(permzp[ip - sz_p], permzp[ip],
+                                       z_mult_dat[ip - sz_p], z_mult_dat[ip])
+                             * diff
+                             * RPMean(lower_cond, upper_cond,
+                                      rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
+                             / viscosity;
+
+                     sep = dz * z_mult_dat[ip] / 2.0;
+
+                     lower_cond = value / sep - 0.25 * dp[ip] * gravity;
+                     upper_cond = pp[ip] / sep + 0.25 * dp[ip] * gravity;
+                     diff = (lower_cond - upper_cond);
+                     u_new = RPMean(lower_cond, upper_cond,
+                                    rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip]);
+                     u_new = u_new * ffz * del_x_slope * del_y_slope *
+                             (permzp[ip] / viscosity)
+                             * 2.0 * diff;
+                   }),
+                   FACE(Front,
+                   {
+                     dir = 1;
+                     sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
+
+                     lower_cond = pp[ip] / sep - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
+                                  z_dir_g;
+
+                     upper_cond = pp[ip + sz_p] / sep
+                                  + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p]))
+                                  * dp[ip + sz_p] * gravity * z_dir_g;
+
+                     diff = (lower_cond - upper_cond);
+
+
+                     u_old = ffz * del_x_slope * del_y_slope
+                             * PMeanDZ(permzp[ip], permzp[ip + sz_p],
+                                       z_mult_dat[ip], z_mult_dat[ip + sz_p])
+                             * diff
+                             * RPMean(lower_cond, upper_cond,
+                                      rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
+                             / viscosity;
+
+                     sep = dz * z_mult_dat[ip] / 2.0;
+
+                     lower_cond = (pp[ip] / sep) - 0.25 * dp[ip] * gravity * z_dir_g;
+                     upper_cond = (value / sep) + 0.25 * dp[ip] * gravity * z_dir_g;
+
+                     diff = lower_cond - upper_cond;
+                     u_new = RPMean(lower_cond, upper_cond,
+                                    rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p]);
+                     u_new = u_new * ffz * del_x_slope * del_y_slope *
+                             (permzp[ip] / viscosity)
+                             * 2.0 * diff;
+                   })
+        );
+
+      ApplyBCPatch(FluxBC,
+                   PROLOGUE({
+                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                       io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
+                       x_dir_g = 0.0;
+                       y_dir_g = 0.0;
+                       z_dir_g = 1.0;
+                       del_x_slope = 1.0;
+                       del_y_slope = 1.0;
+                     }),
+                   EPILOGUE({
+                       fp[ip] -= dt * dir * u_old;
+                       u_new = u_new * bc_patch_values[ival];
+                       fp[ip] += dt * dir * u_new;
+                     }),
+                   FACE(Left, {
+                       dir = -1;
+                       diff = pp[ip - 1] - pp[ip];
+                       u_old = z_mult_dat[ip] * ffx * del_y_slope
+                               * PMean(pp[ip - 1], pp[ip],
+                                       permxp[ip - 1], permxp[ip])
+                               * (diff / dx * del_x_slope)
+                               * RPMean(pp[ip - 1], pp[ip],
+                                        rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
+                               / viscosity;
+
+                       u_old += z_mult_dat[ip] * ffx * del_y_slope
+                                * PMean(pp[ip - 1], pp[ip],
+                                        permxp[ip - 1], permxp[ip])
+                                * (-x_dir_g)
+                                * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
+                                         rpp[ip] * dp[ip])
+                                / viscosity;
+                       u_new = z_mult_dat[ip] * ffx;
+                     }),
+                   FACE(Right, {
+                       dir = 1;
+                       diff = pp[ip] - pp[ip + 1];
+                       u_old = z_mult_dat[ip] * ffx * del_y_slope
+                               * PMean(pp[ip], pp[ip + 1],
+                                       permxp[ip], permxp[ip + 1])
+                               * (diff / dx * del_x_slope)
+                               * RPMean(pp[ip], pp[ip + 1],
+                                        rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
+                               / viscosity;
+
+                       u_old += z_mult_dat[ip] * ffx * del_y_slope
+                                * PMean(pp[ip], pp[ip + 1],
+                                        permxp[ip], permxp[ip + 1])
+                                * (-x_dir_g)
+                                * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
+                                         rpp[ip + 1] * dp[ip + 1])
+                                / viscosity;
+                       u_new = z_mult_dat[ip] * ffx;
+                     }),
+                   FACE(Down, {
+                       dir = -1;
+                       diff = pp[ip - sy_p] - pp[ip];
+                       u_old = z_mult_dat[ip] * ffy * del_x_slope
+                               * PMean(pp[ip - sy_p], pp[ip],
+                                       permyp[ip - sy_p], permyp[ip])
+                               * (diff / dy)
+                               * RPMean(pp[ip - sy_p], pp[ip],
+                                        rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
+                               / viscosity;
+
+                       u_old += z_mult_dat[ip] * ffy * del_x_slope *
+                                PMean(pp[ip], pp[ip - sy_p], permyp[ip],
+                                      permyp[ip - sy_p])
+                                * (-y_dir_g)
+                                * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
+                                         rpp[ip - sy_p] * dp[ip - sy_p])
+                                / viscosity;
+                       u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                     }),
+                   FACE(Up, {
+                       dir = 1;
+                       diff = pp[ip] - pp[ip + sy_p];
+                       u_old = z_mult_dat[ip] * ffy * del_x_slope
+                               * PMean(pp[ip], pp[ip + sy_p],
+                                       permyp[ip], permyp[ip + sy_p])
+                               * (diff / dy)
+                               * RPMean(pp[ip], pp[ip + sy_p],
+                                        rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
+                               / viscosity;
+
+                       u_old += z_mult_dat[ip] * ffy * del_x_slope
+                                * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
+                                        permyp[ip + sy_p])
+                                * (-y_dir_g)
+                                * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
+                                         rpp[ip + sy_p] * dp[ip + sy_p])
+                                / viscosity;
+                       u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                     }),
+                   FACE(Back, {
+                       dir = -1;
+                       sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]); //RMM
+
+                       lower_cond = (pp[ip - sz_p] / sep)
+                                    - (z_mult_dat[ip - sz_p] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip - sz_p] * gravity *
+                                    z_dir_g;
+
+                       upper_cond = (pp[ip] / sep) + (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip] * gravity *
+                                    z_dir_g;
+
+                       diff = lower_cond - upper_cond;
+                       u_old = ffz * del_x_slope * del_y_slope
+                               * PMeanDZ(permzp[ip - sz_p], permzp[ip],
+                                         z_mult_dat[ip - sz_p], z_mult_dat[ip])
+                               * diff
+                               * RPMean(lower_cond, upper_cond,
+                                        rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
+                               / viscosity;
+                       u_new = ffz * del_x_slope * del_y_slope;
+                     }),
+                   FACE(Front, {
+                       dir = 1;
+                       sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
+
+                       lower_cond = (pp[ip] / sep) - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
+                                    z_dir_g;
+
+                       upper_cond = (pp[ip + sz_p] / sep)
+                                    + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip + sz_p] * gravity *
+                                    z_dir_g;
+
+                       diff = lower_cond - upper_cond;
+                       u_old = ffz * del_x_slope * del_y_slope
+                               * PMeanDZ(permzp[ip], permzp[ip + sz_p],
+                                         z_mult_dat[ip], z_mult_dat[ip + sz_p])
+                               * diff
+                               * RPMean(lower_cond, upper_cond,
+                                        rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
+                               / viscosity;
+                       u_new = ffz * del_x_slope * del_y_slope;
+                     })
+        );
+
+      ApplyBCPatch_WithPostcondition(OverlandBC,
+                   POSTCONDITION({
+                       if (diffusive == 0)
+                       {
+                         PFModuleInvokeType(OverlandFlowEvalInvoke, overlandflow_module,
+                                            (grid, is, bc_struct, ipatch, problem_data,
+                                             pressure, old_pressure,
+                                             ke_, kw_, kn_, ks_, qx_, qy_, CALCFCN));
+                       }
+                       else
+                       {
+                         double *dummy1;
+                         double *dummy2;
+                         double *dummy3;
+                         double *dummy4;
+                         PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff,
+                                            (grid, is, bc_struct, ipatch, problem_data,
+                                             pressure, old_pressure,
+                                             ke_, kw_, kn_, ks_,
+                                             dummy1, dummy2, dummy3, dummy4,
+                                             qx_, qy_, CALCFCN));
+                       }
+
+                       BCStructPatchLoopNoFdir(i, j, k, ival, bc_struct, ipatch, is,
+                                               NO_PROLOGUE,
+                                               NO_EPILOGUE,
+                                               FACE(Front,
+                                               {
+                                                 dir = 1;
+                                                 ip = SubvectorEltIndex(p_sub, i, j, k);
+                                                 io = SubvectorEltIndex(x_sl_sub, i, j, 0);
+                                                 q_overlnd = vol
+                                                             * (pfmax(pp[ip], 0.0) - pfmax(opp[ip], 0.0)) / dz +
+                                                             dt * vol * ((ke_[io] - kw_[io]) / dx + (kn_[io] - ks_[io]) / dy)
+                                                             / dz + vol * dt / dz * (exp(pfmin(pp[ip], 0.0)
+                                                                                         * public_xtra->SpinupDampP1)
+                                                                                     * public_xtra->SpinupDampP2);
+                                                 if (overlandspinup == 1)
+                                                 {
+                                                   q_overlnd = (vol / dz) * dt
+                                                               * ((pfmax(pp[ip], 0.0) - 0.0)
+                                                                  + exp(pfmin(pp[ip], 0.0)
+                                                                        * public_xtra->SpinupDampP1)
+                                                                  * public_xtra->SpinupDampP2);
+                                                 }
+                                                 fp[ip] += q_overlnd;
+                                               })
+                         );
+                     }),
+                   PROLOGUE({
+                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                       io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
+                       x_dir_g = 0.0;
+                       y_dir_g = 0.0;
+                       z_dir_g = 1.0;
+                       del_x_slope = 1.0;
+                       del_y_slope = 1.0;
+                     }),
+                   EPILOGUE({
+                       fp[ip] -= dt * dir * u_old;
+                       u_new = u_new * bc_patch_values[ival];
+                       fp[ip] += dt * dir * u_new;
+                     }),
+                   FACE(Left, {
+                       dir = -1;
+                       diff = pp[ip - 1] - pp[ip];
+                       u_old = z_mult_dat[ip] * ffx * del_y_slope
+                               * PMean(pp[ip - 1], pp[ip],
+                                       permxp[ip - 1], permxp[ip])
+                               * (diff / dx)
+                               * RPMean(pp[ip - 1], pp[ip],
+                                        rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
+                               / viscosity;
+                       u_old += z_mult_dat[ip] * ffx * del_y_slope
+                                * PMean(pp[ip - 1], pp[ip],
+                                        permxp[ip - 1], permxp[ip])
+                                * (-x_dir_g)
+                                * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
+                                         rpp[ip] * dp[ip])
+                                / viscosity;
+                       u_new = z_mult_dat[ip] * ffx * del_y_slope;
+                     }),
+                   FACE(Right, {
+                       dir = 1;
+                       diff = pp[ip] - pp[ip + 1];
+                       u_old = z_mult_dat[ip] * ffx * del_y_slope
+                               * PMean(pp[ip], pp[ip + 1],
+                                       permxp[ip], permxp[ip + 1])
+                               * (diff / dx)
+                               * RPMean(pp[ip], pp[ip + 1],
+                                        rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
+                               / viscosity;
+                       u_old += z_mult_dat[ip] * ffx * del_y_slope
+                                * PMean(pp[ip], pp[ip + 1],
+                                        permxp[ip], permxp[ip + 1])
+                                * (-x_dir_g)
+                                * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
+                                         rpp[ip + 1] * dp[ip + 1])
+                                / viscosity;
+                       u_new = z_mult_dat[ip] * ffx * del_y_slope;
+                     }),
+                   FACE(Down, {
+                       dir = -1;
+                       diff = pp[ip - sy_p] - pp[ip];
+                       u_old = z_mult_dat[ip] * ffy * del_x_slope
+                               * PMean(pp[ip - sy_p], pp[ip],
+                                       permyp[ip - sy_p], permyp[ip])
+                               * (diff / dy)
+                               * RPMean(pp[ip - sy_p], pp[ip],
+                                        rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
+                               / viscosity;
+
+                       u_old += z_mult_dat[ip] * ffy * del_x_slope *
+                                PMean(pp[ip], pp[ip - sy_p], permyp[ip],
+                                      permyp[ip - sy_p])
+                                * (-y_dir_g)
+                                * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
+                                         rpp[ip - sy_p] * dp[ip - sy_p])
+                                / viscosity;
+                       u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                     }),
+                   FACE(Up, {
+                       dir = 1;
+                       diff = pp[ip] - pp[ip + sy_p];
+                       u_old = z_mult_dat[ip] * ffy * del_x_slope
+                               * PMean(pp[ip], pp[ip + sy_p],
+                                       permyp[ip], permyp[ip + sy_p])
+                               * (diff / dy)
+                               * RPMean(pp[ip], pp[ip + sy_p],
+                                        rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
+                               / viscosity;
+
+                       u_old += z_mult_dat[ip] * ffy * del_x_slope
+                                * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
+                                        permyp[ip + sy_p])
+                                * (-y_dir_g)
+                                * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
+                                         rpp[ip + sy_p] * dp[ip + sy_p])
+                                / viscosity;
+                       u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                     }),
+                   FACE(Back, {
+                       dir = -1;
                   sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]); //RMM
                   //  sep = dz*z_mult_dat[ip];  //RMM
 
@@ -1437,683 +1401,414 @@ double      *FBx_dat, *FBy_dat, *FBz_dat;     //@RMM
                           * RPMean(lower_cond, upper_cond,
                                    rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
                           / viscosity;
-                  break;
-
-                case  1:
-                  dir = 1;
-                  sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
-
-                  lower_cond = (pp[ip] / sep) - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
-                               z_dir_g;
-                  upper_cond = (pp[ip + sz_p] / sep)
-                               + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip + sz_p] * gravity *
-                               z_dir_g;
-                  diff = lower_cond - upper_cond;
-                  u_old = ffz * del_x_slope * del_y_slope
-                          * PMeanDZ(permzp[ip], permzp[ip + sz_p],
-                                    z_mult_dat[ip], z_mult_dat[ip + sz_p])
-                          * diff
-                          * RPMean(lower_cond, upper_cond,
-                                   rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
-                          / viscosity;
-                  break;
-              }
-              u_new = ffz * del_x_slope * del_y_slope;
-            }
-
-            /* Remove the boundary term computed above */
-            fp[ip] -= dt * dir * u_old;
-            //add source boundary terms
-            u_new = u_new * bc_patch_values[ival];       //sk: here we go in and implement surface routing!
-
-            fp[ip] += dt * dir * u_new;
-          });
-
-          // SGS Fix this up later after things are a bit more stable.   Probably should
-          // Use this loop inside the overland flow eval as it is more efficient.
-#if 1
-          if (diffusive == 0)
-          {
-            /* Call overlandflow_eval to compute fluxes across the east, west, north, and south faces */
-            PFModuleInvokeType(OverlandFlowEvalInvoke, overlandflow_module, (grid, is, bc_struct, ipatch, problem_data, pressure, old_pressure,
-                                                                             ke_, kw_, kn_, ks_, qx_, qy_, CALCFCN));
-          }
-          else
-          {
-            /*  @RMM this is modified to be kinematic wave routing, with a new module for diffusive wave
-             * routing added */
-            double *dummy1, *dummy2, *dummy3, *dummy4;
-            PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff, (grid, is, bc_struct, ipatch, problem_data, pressure, old_pressure,
-                                                                                      ke_, kw_, kn_, ks_,
-                                                                                      dummy1, dummy2, dummy3, dummy4,
-                                                                                      qx_, qy_, CALCFCN));
-          }
-#else
-          // SGS TODO can these loops be merged?
-          BCStructPatchLoopOvrlnd(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case 1:
-                  io = SubvectorEltIndex(qx_sub, i, j, 0);
-                  ip = SubvectorEltIndex(p_sub, i, j, k);
-
-                  double dir_x = 0.0;
-                  double dir_y = 0.0;
-                  if (x_sl_dat[io] > 0.0)
-                    dir_x = -1.0;
-                  if (y_sl_dat[io] > 0.0)
-                    dir_y = -1.0;
-                  if (x_sl_dat[io] < 0.0)
-                    dir_x = 1.0;
-                  if (y_sl_dat[io] < 0.0)
-                    dir_y = 1.0;
-
-                  qx_[io] = dir_x * (RPowerR(fabs(x_sl_dat[io]), 0.5) / mann_dat[io]) * RPowerR(pfmax((pp[ip]), 0.0), (5.0 / 3.0));
-
-                  qy_[io] = dir_y * (RPowerR(fabs(y_sl_dat[io]), 0.5) / mann_dat[io]) * RPowerR(pfmax((pp[ip]), 0.0), (5.0 / 3.0));
-
-                  break;
-              }
-            }
-          });
-
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case 1:
-                  io = SubvectorEltIndex(ke_sub, i, j, 0);
-
-                  ke_[io] = pfmax(qx_[io], 0.0) - pfmax(-qx_[io + 1], 0.0);
-                  kw_[io] = pfmax(qx_[io - 1], 0.0) - pfmax(-qx_[io], 0.0);
-
-                  kn_[io] = pfmax(qy_[io], 0.0) - pfmax(-qy_[io + sy_p], 0.0);
-                  ks_[io] = pfmax(qy_[io - sy_p], 0.0) - pfmax(-qy_[io], 0.0);
-
-                  break;
-              }
-            }
-          });
-#endif
-
-
-
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case 1:
-                  dir = 1;
-                  ip = SubvectorEltIndex(p_sub, i, j, k);
-                  io = SubvectorEltIndex(x_sl_sub, i, j, 0);
-
-                  q_overlnd = 0.0;
-
-
-                  q_overlnd = vol
-                              * (pfmax(pp[ip], 0.0) - pfmax(opp[ip], 0.0)) / dz +
-                              dt * vol * ((ke_[io] - kw_[io]) / dx + (kn_[io] - ks_[io]) / dy)
-                              / dz + vol * dt / dz * (exp(pfmin(pp[ip], 0.0) * public_xtra->SpinupDampP1) * public_xtra->SpinupDampP2);
-                  //NBE
-
-
-                  if (overlandspinup == 1)
-                  {
-                    /* add flux loss equal to excess head  that overwrites the prior overland flux */
-                    q_overlnd = (vol / dz) * dt * ((pfmax(pp[ip], 0.0) - 0.0) + exp(pfmin(pp[ip], 0.0) *
-                                                                                    public_xtra->SpinupDampP1) * public_xtra->SpinupDampP2); //@RMM
-                  }
-
-
-
-                  fp[ip] += q_overlnd;
-
-                  break;
-              }
-            }
-          });
-
-          break;
-        }         /* End OverlandBC case */
-
-        case SeepageFaceBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            io = SubmatrixEltIndex(x_ssl_sub, i, j, grid2d_iz);
-
-            x_dir_g = 0.0;
-            y_dir_g = 0.0;
-            z_dir_g = 1.0;
-
-            del_x_slope = 1.0;
-            del_y_slope = 1.0;
-
-            if (fdir[0])
-            {
-              switch(fdir[0])
-              {
-                case -1:
-                {
-                  dir = -1;
-                  u_old = 0.0;
-                  break;
-                }
-
-                case 1:
-                {
-                  dir = 1;
-                  u_old = 0.0;
-                  break;
-                }
-              }
-              u_new = z_mult_dat[ip] * ffx * del_y_slope;
-            } /* End if (fdir[0]) */
-            else if (fdir[1])
-            {
-              switch (fdir[1])
-              {
-                case -1:
-                {
-                  dir = -1;
-                  u_old = 0.0;
-                  break;
-                }
-
-                case 1:
-                {
-                  dir = 1;
-                  u_old = 0.0;
-                  break;
-                }
-              }
-              u_new = z_mult_dat[ip] * ffy * del_x_slope;
-            } /* End else if (fdir[1]) */
-            else if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case -1:
-                {
-                  dir = -1;
-                  u_old = 0.0;
-                  break;
-                }
-
-                case 1:
-                {
-                  dir = 1;
-                  u_old = 0.0;
-                  break;
-                }
-              }
-              u_new = ffz * del_x_slope * del_y_slope;
-            } /* End else if (fdir[2]) */
-
-            /* Remove the boundary condition computed above */
-            fp[ip] -= dt * dir * u_old;
-            // add source boundary terms
-            u_new = u_new * bc_patch_values[ival];
-            fp[ip] += dt * dir * u_new;
-          }); /* End BCStructPatchLoop */
-
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case 1:
-                {
-                  dir = 1;
-
-                  ip = SubvectorEltIndex(p_sub, i, j, k);
-                  io = SubmatrixEltIndex(x_sl_sub, i, j, 0);
-
-                  /* add flux loss equal to excess head that overwrites the prior overland flux */
-                  q_overlnd = (vol / dz) * dt * (pfmax(pp[ip], 0.0) - 0.0); //@RMM
-
-                  fp[ip] += q_overlnd;
-                  break;
-                }
-              }
-            } /* End if (fdir[2]) */
-          }); /* End BCStructPatchLoop */
-
-          break;
-        } /* End SeepageFaceBC case */
-
-
-        /*  OverlandBC for KWE upwind */
-        case OverlandKinematicBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
-
-            x_dir_g = 0.0;
-            y_dir_g = 0.0;
-            z_dir_g = 1.0;
-
-            del_x_slope = 1.0;
-            del_y_slope = 1.0;
-
-            if (fdir[0])
-            {
-              switch (fdir[0])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - 1] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip - 1], pp[ip],
-                                  permxp[ip - 1], permxp[ip])
-                          * (diff / dx)
-                          * RPMean(pp[ip - 1], pp[ip],
-                                   rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip - 1], pp[ip],
-                                   permxp[ip - 1], permxp[ip])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
-                                    rpp[ip] * dp[ip])
-                           / viscosity;
-
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + 1];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip], pp[ip + 1],
-                                  permxp[ip], permxp[ip + 1])
-                          * (diff / dx)
-                          * RPMean(pp[ip], pp[ip + 1],
-                                   rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip], pp[ip + 1],
-                                   permxp[ip], permxp[ip + 1])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
-                                    rpp[ip + 1] * dp[ip + 1])
-                           / viscosity;
-                  break;
-              }
-              u_new = z_mult_dat[ip] * ffx * del_y_slope;
-            }
-            else if (fdir[1])
-            {
-              switch (fdir[1])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - sy_p] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip - sy_p], pp[ip],
-                                  permyp[ip - sy_p], permyp[ip])
-                          * (diff / dy)
-                          * RPMean(pp[ip - sy_p], pp[ip],
-                                   rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope *
-                           PMean(pp[ip], pp[ip - sy_p], permyp[ip],
-                                 permyp[ip - sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip - sy_p] * dp[ip - sy_p])
-                           / viscosity;
-
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + sy_p];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip], pp[ip + sy_p],
-                                  permyp[ip], permyp[ip + sy_p])
-                          * (diff / dy)
-                          * RPMean(pp[ip], pp[ip + sy_p],
-                                   rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope
-                           * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
-                                   permyp[ip + sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip + sy_p] * dp[ip + sy_p])
-                           / viscosity;
-
-                  break;
-              }
-              u_new = z_mult_dat[ip] * ffy * del_x_slope;
-            }
-            else if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case -1:
-                  dir = -1;
-                  sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]); //RMM
-                  //  sep = dz*z_mult_dat[ip];  //RMM
-
-                  lower_cond = (pp[ip - sz_p] / sep)
-                               - (z_mult_dat[ip - sz_p] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip - sz_p] * gravity *
-                               z_dir_g;
-                  upper_cond = (pp[ip] / sep) + (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip] * gravity *
-                               z_dir_g;
-
-                  diff = lower_cond - upper_cond;
-                  u_old = ffz * del_x_slope * del_y_slope
-                          * PMeanDZ(permzp[ip - sz_p], permzp[ip],
-                                    z_mult_dat[ip - sz_p], z_mult_dat[ip])
-                          * diff
-                          * RPMean(lower_cond, upper_cond,
-                                   rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
-                          / viscosity;
-                  break;
-
-                case  1:
-                  dir = 1;
-                  sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
-
-                  lower_cond = (pp[ip] / sep) - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
-                               z_dir_g;
-                  upper_cond = (pp[ip + sz_p] / sep)
-                               + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip + sz_p] * gravity *
-                               z_dir_g;
-                  diff = lower_cond - upper_cond;
-                  u_old = ffz * del_x_slope * del_y_slope
-                          * PMeanDZ(permzp[ip], permzp[ip + sz_p],
-                                    z_mult_dat[ip], z_mult_dat[ip + sz_p])
-                          * diff
-                          * RPMean(lower_cond, upper_cond,
-                                   rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
-                          / viscosity;
-                  break;
-              }
-              u_new = ffz * del_x_slope * del_y_slope;
-            }
-
-            /* Remove the boundary term computed above */
-            fp[ip] -= dt * dir * u_old;
-            //add source boundary terms
-            u_new = u_new * bc_patch_values[ival];
-
-            fp[ip] += dt * dir * u_new;
-          });
-
-
- //printf("Case overland_flow \n");
-            /*  @RMM this is modified to be kinematic wave routing, with a new module for diffusive wave
-             * routing added */
-            double *dummy1, *dummy2, *dummy3, *dummy4;
-            PFModuleInvokeType(OverlandFlowEvalKinInvoke, overlandflow_module_kin,
-                               (grid, is, bc_struct, ipatch, problem_data, pressure,
-                                ke_, kw_, kn_, ks_,
-                                dummy1, dummy2, dummy3, dummy4,
-                                qx_, qy_, CALCFCN));
-
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case 1:
-                  dir = 1;
-                  ip = SubvectorEltIndex(p_sub, i, j, k);
-                  io = SubvectorEltIndex(x_sl_sub, i, j, 0);
-
-                  q_overlnd = 0.0;
-
-
-                  q_overlnd = vol
-                              * (pfmax(pp[ip], 0.0) - pfmax(opp[ip], 0.0)) / dz +
-                              dt * vol * ((ke_[io] - kw_[io]) / dx + (kn_[io] - ks_[io]) / dy)
-                              / dz;
-
-
-                  fp[ip] += q_overlnd;
-
-                  break;
-              }
-            }
-          });
-
-          break;
-        } /* End OverlandKinematicBC */
-
-
-        /* Duplicate of OverlandBC computations to be worked on */
-        case OverlandDiffusiveBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
-
-            x_dir_g = 0.0;
-            y_dir_g = 0.0;
-            z_dir_g = 1.0;
-
-            del_x_slope = 1.0;
-            del_y_slope = 1.0;
-
-            if (fdir[0])
-            {
-              switch (fdir[0])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - 1] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip - 1], pp[ip],
-                                  permxp[ip - 1], permxp[ip])
-                          * (diff / dx)
-                          * RPMean(pp[ip - 1], pp[ip],
-                                   rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip - 1], pp[ip],
-                                   permxp[ip - 1], permxp[ip])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
-                                    rpp[ip] * dp[ip])
-                           / viscosity;
-
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + 1];
-                  u_old = z_mult_dat[ip] * ffx * del_y_slope
-                          * PMean(pp[ip], pp[ip + 1],
-                                  permxp[ip], permxp[ip + 1])
-                          * (diff / dx)
-                          * RPMean(pp[ip], pp[ip + 1],
-                                   rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffx * del_y_slope
-                           * PMean(pp[ip], pp[ip + 1],
-                                   permxp[ip], permxp[ip + 1])
-                           * (-x_dir_g)
-                           * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
-                                    rpp[ip + 1] * dp[ip + 1])
-                           / viscosity;
-                  break;
-              }
-              u_new = z_mult_dat[ip] * ffx * del_y_slope;
-            }
-            else if (fdir[1])
-            {
-              switch (fdir[1])
-              {
-                case -1:
-                  dir = -1;
-                  diff = pp[ip - sy_p] - pp[ip];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip - sy_p], pp[ip],
-                                  permyp[ip - sy_p], permyp[ip])
-                          * (diff / dy)
-                          * RPMean(pp[ip - sy_p], pp[ip],
-                                   rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope *
-                           PMean(pp[ip], pp[ip - sy_p], permyp[ip],
-                                 permyp[ip - sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip - sy_p] * dp[ip - sy_p])
-                           / viscosity;
-
-                  break;
-
-                case  1:
-                  dir = 1;
-                  diff = pp[ip] - pp[ip + sy_p];
-                  u_old = z_mult_dat[ip] * ffy * del_x_slope
-                          * PMean(pp[ip], pp[ip + sy_p],
-                                  permyp[ip], permyp[ip + sy_p])
-                          * (diff / dy)
-                          * RPMean(pp[ip], pp[ip + sy_p],
-                                   rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
-                          / viscosity;
-
-                  u_old += z_mult_dat[ip] * ffy * del_x_slope
-                           * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
-                                   permyp[ip + sy_p])
-                           * (-y_dir_g)
-                           * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
-                                    rpp[ip + sy_p] * dp[ip + sy_p])
-                           / viscosity;
-
-                  break;
-              }
-              u_new = z_mult_dat[ip] * ffy * del_x_slope;
-            }
-            else if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case -1:
-                  dir = -1;
-                  sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]); //RMM
-                  //  sep = dz*z_mult_dat[ip];  //RMM
-
-                  lower_cond = (pp[ip - sz_p] / sep)
-                               - (z_mult_dat[ip - sz_p] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip - sz_p] * gravity *
-                               z_dir_g;
-                  upper_cond = (pp[ip] / sep) + (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip] * gravity *
-                               z_dir_g;
-
-                  diff = lower_cond - upper_cond;
-                  u_old = ffz * del_x_slope * del_y_slope
-                          * PMeanDZ(permzp[ip - sz_p], permzp[ip],
-                                    z_mult_dat[ip - sz_p], z_mult_dat[ip])
-                          * diff
-                          * RPMean(lower_cond, upper_cond,
-                                   rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
-                          / viscosity;
-                  break;
-
-                case  1:
-                  dir = 1;
-                  sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
-
-                  lower_cond = (pp[ip] / sep) - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
-                               z_dir_g;
-                  upper_cond = (pp[ip + sz_p] / sep)
-                               + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip + sz_p] * gravity *
-                               z_dir_g;
-                  diff = lower_cond - upper_cond;
-                  u_old = ffz * del_x_slope * del_y_slope
-                          * PMeanDZ(permzp[ip], permzp[ip + sz_p],
-                                    z_mult_dat[ip], z_mult_dat[ip + sz_p])
-                          * diff
-                          * RPMean(lower_cond, upper_cond,
-                                   rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
-                          / viscosity;
-                  break;
-              }
-              u_new = ffz * del_x_slope * del_y_slope;
-            }
-
-            /* Remove the boundary term computed above */
-            fp[ip] -= dt * dir * u_old;
-            //add source boundary terms
-            u_new = u_new * bc_patch_values[ival];       //sk: here we go in and implement surface routing!
-
-            fp[ip] += dt * dir * u_new;
-          });
-
-          // SGS Fix this up later after things are a bit more stable.   Probably should
-          // Use this loop inside the overland flow eval as it is more efficient.
-
-            /*  @RMM this is a new module for diffusive wave
-              */
-
-            double *dummy1, *dummy2, *dummy3, *dummy4;
-            PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff, (grid, is, bc_struct, ipatch, problem_data, pressure, old_pressure,
-                                                                                      ke_, kw_, kn_, ks_,
-                                                                                      dummy1, dummy2, dummy3, dummy4,
-                                                                                      qx_, qy_, CALCFCN));
-
-
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case 1:
-                  dir = 1;
-                  ip = SubvectorEltIndex(p_sub, i, j, k);
-                  io = SubvectorEltIndex(x_sl_sub, i, j, 0);
-
-                  q_overlnd = 0.0;
-
-
-                  q_overlnd = vol
-                              * (pfmax(pp[ip], 0.0) - pfmax(opp[ip], 0.0)) / dz +
-                              dt * vol * ((ke_[io] - kw_[io]) / dx + (kn_[io] - ks_[io]) / dy)
-                              / dz;
-
-                  fp[ip] += q_overlnd;
-
-                  break;
-              }
-            }
-          });
-
-          break;
-        } /* End OverlandDiffusiveBC */
-
-        default:
-        {
-          fprintf(stderr, "Error, got BC Type: %d\n", BCStructBCType(bc_struct, ipatch));
-          exit(-1);
-        }
-      }        /* End switch BCtype */
-    }          /* End ipatch loop */
-  }            /* End subgrid loop */
+                  u_new = ffz * del_x_slope * del_y_slope;
+                     }),
+                   FACE(Front, {
+                       dir = 1;
+                       sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
+
+                       lower_cond = (pp[ip] / sep) - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
+                                    z_dir_g;
+                       upper_cond = (pp[ip + sz_p] / sep)
+                                    + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip + sz_p] * gravity *
+                                    z_dir_g;
+                       diff = lower_cond - upper_cond;
+                       u_old = ffz * del_x_slope * del_y_slope
+                               * PMeanDZ(permzp[ip], permzp[ip + sz_p],
+                                         z_mult_dat[ip], z_mult_dat[ip + sz_p])
+                               * diff
+                               * RPMean(lower_cond, upper_cond,
+                                        rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
+                               / viscosity;
+                       u_new = ffz * del_x_slope * del_y_slope;
+                     })
+        );
+
+      ApplyBCPatch(SeepageFaceBC,
+                   PROLOGUE(
+                   {
+                     ip = SubvectorEltIndex(p_sub, i, j, k);
+                     del_x_slope = 1.0;
+                     del_y_slope = 1.0;
+                   }),
+                   EPILOGUE(
+                   {
+                     fp[ip] += dt * dir * u_new;
+                   }),
+                   FACE(Left,
+                   {
+                     dir = -1;
+                     u_new = z_mult_dat[ip] * ffx * del_y_slope;
+                   }),
+                   FACE(Right,
+                   {
+                     dir = 1;
+                     u_new = z_mult_dat[ip] * ffx * del_y_slope;
+                   }),
+                   FACE(Down,
+                   {
+                     dir = -1;
+                     u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                   }),
+                   FACE(Up,
+                   {
+                     dir = 1;
+                     u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                   }),
+                   FACE(Back,
+                   {
+                     dir = -1;
+                     u_new = ffz * del_x_slope * del_y_slope;
+                   }),
+                   FACE(Front,
+                   {
+                     dir = 1;
+                     u_new = ffz * del_x_slope * del_y_slope;
+                     q_overlnd = (vol / dz) * dt * (pfmax(pp[ip], 0.0) - 0.0);
+                     fp[ip] += q_overlnd;
+                   })
+        );
+
+      ApplyBCPatch_WithPostcondition(OverlandKinematicBC,
+                                     POSTCONDITION(
+                                     {
+                                       double *dummy1;
+                                       double *dummy2;
+                                       double *dummy3;
+                                       double *dummy4;
+                                       PFModuleInvokeType(OverlandFlowEvalKinInvoke, overlandflow_module_kin,
+                                                          (grid, is, bc_struct, ipatch, problem_data, pressure,
+                                                           ke_, kw_, kn_, ks_,
+                                                           dummy1, dummy2, dummy3, dummy4,
+                                                           qx_, qy_, CALCFCN));
+                                       BCStructPatchLoopNoFdir(i, j, k, ival, bc_struct, ipatch, is,
+                                                               NO_PROLOGUE,
+                                                               NO_EPILOGUE,
+                                                               FACE(Front,
+                                                               {
+                                                                 dir = 1;
+                                                                 ip = SubvectorEltIndex(p_sub, i, j, k);
+                                                                 io = SubvectorEltIndex(x_sl_sub, i, j, 0);
+
+                                                                 q_overlnd = 0.0;
+                                                                 q_overlnd = vol
+                                                                             * (pfmax(pp[ip], 0.0) - pfmax(opp[ip], 0.0)) / dz +
+                                                                             dt * vol * ((ke_[io] - kw_[io]) / dx + (kn_[io] - ks_[io]) / dy)
+                                                                             / dz;
+                                                                 fp[ip] += q_overlnd;
+                                                               })
+                                         );
+                                     }),
+                                     PROLOGUE(
+                                     {
+                                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                                       io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
+                                       x_dir_g = 0.0;
+                                       y_dir_g = 0.0;
+                                       z_dir_g = 1.0;
+                                       del_x_slope = 1.0;
+                                       del_y_slope = 1.0;
+                                     }),
+                                     EPILOGUE(
+                                     {
+                                       fp[ip] -= dt * dir * u_old;
+                                       u_new = u_new * bc_patch_values[ival];
+                                       fp[ip] += dt * dir * u_new;
+                                     }),
+                                     FACE(Left,
+                                     {
+                                       dir = -1;
+                                       diff = pp[ip - 1] - pp[ip];
+                                       u_old = z_mult_dat[ip] * ffx * del_y_slope
+                                               * PMean(pp[ip - 1], pp[ip],
+                                                       permxp[ip - 1], permxp[ip])
+                                               * (diff / dx)
+                                               * RPMean(pp[ip - 1], pp[ip],
+                                                        rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
+                                               / viscosity;
+                                       u_old += z_mult_dat[ip] * ffx * del_y_slope
+                                                * PMean(pp[ip - 1], pp[ip],
+                                                        permxp[ip - 1], permxp[ip])
+                                                * (-x_dir_g)
+                                                * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
+                                                         rpp[ip] * dp[ip])
+                                                / viscosity;
+                                       u_new = z_mult_dat[ip] * ffx * del_y_slope;
+                                     }),
+                                     FACE(Right,
+                                     {
+                                       dir = 1;
+                                       diff = pp[ip] - pp[ip + 1];
+                                       u_old = z_mult_dat[ip] * ffx * del_y_slope
+                                               * PMean(pp[ip], pp[ip + 1],
+                                                       permxp[ip], permxp[ip + 1])
+                                               * (diff / dx)
+                                               * RPMean(pp[ip], pp[ip + 1],
+                                                        rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
+                                               / viscosity;
+                                       u_old += z_mult_dat[ip] * ffx * del_y_slope
+                                                * PMean(pp[ip], pp[ip + 1],
+                                                        permxp[ip], permxp[ip + 1])
+                                                * (-x_dir_g)
+                                                * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
+                                                         rpp[ip + 1] * dp[ip + 1])
+                                                / viscosity;
+                                       u_new = z_mult_dat[ip] * ffx * del_y_slope;
+                                     }),
+                                     FACE(Down,
+                                     {
+                                       dir = -1;
+                                       diff = pp[ip - sy_p] - pp[ip];
+                                       u_old = z_mult_dat[ip] * ffy * del_x_slope
+                                               * PMean(pp[ip - sy_p], pp[ip],
+                                                       permyp[ip - sy_p], permyp[ip])
+                                               * (diff / dy)
+                                               * RPMean(pp[ip - sy_p], pp[ip],
+                                                        rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
+                                               / viscosity;
+                                       u_old += z_mult_dat[ip] * ffy * del_x_slope *
+                                                PMean(pp[ip], pp[ip - sy_p], permyp[ip],
+                                                      permyp[ip - sy_p])
+                                                * (-y_dir_g)
+                                                * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
+                                                         rpp[ip - sy_p] * dp[ip - sy_p])
+                                                / viscosity;
+                                       u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                                     }),
+                                     FACE(Up,
+                                     {
+                                       dir = 1;
+                                       diff = pp[ip] - pp[ip + sy_p];
+                                       u_old = z_mult_dat[ip] * ffy * del_x_slope
+                                               * PMean(pp[ip], pp[ip + sy_p],
+                                                       permyp[ip], permyp[ip + sy_p])
+                                               * (diff / dy)
+                                               * RPMean(pp[ip], pp[ip + sy_p],
+                                                        rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
+                                               / viscosity;
+                                       u_old += z_mult_dat[ip] * ffy * del_x_slope
+                                                * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
+                                                        permyp[ip + sy_p])
+                                                * (-y_dir_g)
+                                                * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
+                                                         rpp[ip + sy_p] * dp[ip + sy_p])
+                                                / viscosity;
+                                       u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                                     }),
+                                     FACE(Back,
+                                     {
+                                       dir = -1;
+                                       sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]);
+                                       lower_cond = (pp[ip - sz_p] / sep)
+                                                    - (z_mult_dat[ip - sz_p] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip - sz_p] * gravity *
+                                                    z_dir_g;
+                                       upper_cond = (pp[ip] / sep) + (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip] * gravity *
+                                                    z_dir_g;
+                                       diff = lower_cond - upper_cond;
+                                       u_old = ffz * del_x_slope * del_y_slope
+                                               * PMeanDZ(permzp[ip - sz_p], permzp[ip],
+                                                         z_mult_dat[ip - sz_p], z_mult_dat[ip])
+                                               * diff
+                                               * RPMean(lower_cond, upper_cond,
+                                                        rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
+                                               / viscosity;
+                                       u_new = ffz * del_x_slope * del_y_slope;
+                                     }),
+                                     FACE(Front,
+                                     {
+                                       dir = 1;
+                                       sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]); //RMM
+
+                                       lower_cond = (pp[ip] / sep) - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
+                                                    z_dir_g;
+                                       upper_cond = (pp[ip + sz_p] / sep)
+                                                    + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip + sz_p] * gravity *
+                                                    z_dir_g;
+                                       diff = lower_cond - upper_cond;
+                                       u_old = ffz * del_x_slope * del_y_slope
+                                               * PMeanDZ(permzp[ip], permzp[ip + sz_p],
+                                                         z_mult_dat[ip], z_mult_dat[ip + sz_p])
+                                               * diff
+                                               * RPMean(lower_cond, upper_cond,
+                                                        rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
+                                               / viscosity;
+                                       u_new = ffz * del_x_slope * del_y_slope;
+                                     })
+        );
+
+      ApplyBCPatch_WithPostcondition(OverlandDiffusiveBC,
+                                     POSTCONDITION(
+                                     {
+                                       double *dummy1;
+                                       double *dummy2;
+                                       double *dummy3;
+                                       double *dummy4;
+                                       PFModuleInvokeType(OverlandFlowEvalDiffInvoke,
+                                                          overlandflow_module_diff,
+                                                          (grid, is, bc_struct, ipatch, problem_data, pressure,
+                                                           old_pressure,
+                                                           ke_, kw_, kn_, ks_,
+                                                           dummy1, dummy2, dummy3, dummy4,
+                                                           qx_, qy_, CALCFCN));
+
+                                       BCStructPatchLoopNoFdir(i, j, k, ival, bc_struct, ipatch, is,
+                                                               NO_PROLOGUE,
+                                                               NO_EPILOGUE,
+                                                               FACE(Front,
+                                                               {
+                                                                 dir = 1;
+                                                                 ip = SubvectorEltIndex(p_sub, i, j, k);
+                                                                 io = SubvectorEltIndex(x_sl_sub, i, j, 0);
+                                                                 q_overlnd = 0.0;
+                                                                 q_overlnd = vol
+                                                                             * (pfmax(pp[ip], 0.0) - pfmax(opp[ip], 0.0)) / dz +
+                                                                             dt * vol * ((ke_[io] - kw_[io]) / dx + (kn_[io] - ks_[io]) / dy)
+                                                                             / dz;
+                                                                 fp[ip] += q_overlnd;
+                                                               })
+                                         );
+                                     }),
+                                     PROLOGUE(
+                                     {
+                                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                                       io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
+                                       x_dir_g = 0.0;
+                                       y_dir_g = 0.0;
+                                       z_dir_g = 1.0;
+                                       del_x_slope = 1.0;
+                                       del_y_slope = 1.0;
+                                     }),
+                                     EPILOGUE(
+                                     {
+                                       fp[ip] -= dt * dir * u_old;
+                                       u_new = u_new * bc_patch_values[ival];
+                                       fp[ip] += dt * dir * u_new;
+                                     }),
+                                     FACE(Left,
+                                     {
+                                       dir = -1;
+                                       diff = pp[ip - 1] - pp[ip];
+                                       u_old = z_mult_dat[ip] * ffx * del_y_slope
+                                               * PMean(pp[ip - 1], pp[ip],
+                                                       permxp[ip - 1], permxp[ip])
+                                               * (diff / dx)
+                                               * RPMean(pp[ip - 1], pp[ip],
+                                                        rpp[ip - 1] * dp[ip - 1], rpp[ip] * dp[ip])
+                                               / viscosity;
+
+                                       u_old += z_mult_dat[ip] * ffx * del_y_slope
+                                                * PMean(pp[ip - 1], pp[ip],
+                                                        permxp[ip - 1], permxp[ip])
+                                                * (-x_dir_g)
+                                                * RPMean(pp[ip - 1], pp[ip], rpp[ip - 1] * dp[ip - 1],
+                                                         rpp[ip] * dp[ip])
+                                                / viscosity;
+                                       u_new = z_mult_dat[ip] * ffx * del_y_slope;
+                                     }),
+                                     FACE(Right,
+                                     {
+                                       dir = 1;
+                                       diff = pp[ip] - pp[ip + 1];
+                                       u_old = z_mult_dat[ip] * ffx * del_y_slope
+                                               * PMean(pp[ip], pp[ip + 1],
+                                                       permxp[ip], permxp[ip + 1])
+                                               * (diff / dx)
+                                               * RPMean(pp[ip], pp[ip + 1],
+                                                        rpp[ip] * dp[ip], rpp[ip + 1] * dp[ip + 1])
+                                               / viscosity;
+
+                                       u_old += z_mult_dat[ip] * ffx * del_y_slope
+                                                * PMean(pp[ip], pp[ip + 1],
+                                                        permxp[ip], permxp[ip + 1])
+                                                * (-x_dir_g)
+                                                * RPMean(pp[ip], pp[ip + 1], rpp[ip] * dp[ip],
+                                                         rpp[ip + 1] * dp[ip + 1])
+                                                / viscosity;
+                                       u_new = z_mult_dat[ip] * ffx * del_y_slope;
+                                     }),
+                                     FACE(Down,
+                                     {
+                                       dir = -1;
+                                       diff = pp[ip - sy_p] - pp[ip];
+                                       u_old = z_mult_dat[ip] * ffy * del_x_slope
+                                               * PMean(pp[ip - sy_p], pp[ip],
+                                                       permyp[ip - sy_p], permyp[ip])
+                                               * (diff / dy)
+                                               * RPMean(pp[ip - sy_p], pp[ip],
+                                                        rpp[ip - sy_p] * dp[ip - sy_p], rpp[ip] * dp[ip])
+                                               / viscosity;
+
+                                       u_old += z_mult_dat[ip] * ffy * del_x_slope *
+                                                PMean(pp[ip], pp[ip - sy_p], permyp[ip],
+                                                      permyp[ip - sy_p])
+                                                * (-y_dir_g)
+                                                * RPMean(pp[ip], pp[ip - sy_p], rpp[ip] * dp[ip],
+                                                         rpp[ip - sy_p] * dp[ip - sy_p])
+                                                / viscosity;
+                                       u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                                     }),
+                                     FACE(Up,
+                                     {
+                                       dir = 1;
+                                       diff = pp[ip] - pp[ip + sy_p];
+                                       u_old = z_mult_dat[ip] * ffy * del_x_slope
+                                               * PMean(pp[ip], pp[ip + sy_p],
+                                                       permyp[ip], permyp[ip + sy_p])
+                                               * (diff / dy)
+                                               * RPMean(pp[ip], pp[ip + sy_p],
+                                                        rpp[ip] * dp[ip], rpp[ip + sy_p] * dp[ip + sy_p])
+                                               / viscosity;
+
+                                       u_old += z_mult_dat[ip] * ffy * del_x_slope
+                                                * PMean(pp[ip], pp[ip + sy_p], permyp[ip],
+                                                        permyp[ip + sy_p])
+                                                * (-y_dir_g)
+                                                * RPMean(pp[ip], pp[ip + sy_p], rpp[ip] * dp[ip],
+                                                         rpp[ip + sy_p] * dp[ip + sy_p])
+                                                / viscosity;
+                                       u_new = z_mult_dat[ip] * ffy * del_x_slope;
+                                     }),
+                                     FACE(Back,
+                                     {
+                                       dir = -1;
+                                       sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip - sz_p]);
+                                       lower_cond = (pp[ip - sz_p] / sep)
+                                                    - (z_mult_dat[ip - sz_p] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip - sz_p] * gravity *
+                                                    z_dir_g;
+                                       upper_cond = (pp[ip] / sep) + (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip - sz_p])) * dp[ip] * gravity *
+                                                    z_dir_g;
+                                       diff = lower_cond - upper_cond;
+                                       u_old = ffz * del_x_slope * del_y_slope
+                                               * PMeanDZ(permzp[ip - sz_p], permzp[ip],
+                                                         z_mult_dat[ip - sz_p], z_mult_dat[ip])
+                                               * diff
+                                               * RPMean(lower_cond, upper_cond,
+                                                        rpp[ip - sz_p] * dp[ip - sz_p], rpp[ip] * dp[ip])
+                                               / viscosity;
+                                       u_new = ffz * del_x_slope * del_y_slope;
+                                     }),
+                                     FACE(Front,
+                                     {
+                                       dir = 1;
+                                       sep = dz * Mean(z_mult_dat[ip], z_mult_dat[ip + sz_p]);
+                                       lower_cond = (pp[ip] / sep) - (z_mult_dat[ip] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip] * gravity *
+                                                    z_dir_g;
+                                       upper_cond = (pp[ip + sz_p] / sep)
+                                                    + (z_mult_dat[ip + sz_p] / (z_mult_dat[ip] + z_mult_dat[ip + sz_p])) * dp[ip + sz_p] * gravity *
+                                                    z_dir_g;
+                                       diff = lower_cond - upper_cond;
+                                       u_old = ffz * del_x_slope * del_y_slope
+                                               * PMeanDZ(permzp[ip], permzp[ip + sz_p],
+                                                         z_mult_dat[ip], z_mult_dat[ip + sz_p])
+                                               * diff
+                                               * RPMean(lower_cond, upper_cond,
+                                                        rpp[ip] * dp[ip], rpp[ip + sz_p] * dp[ip + sz_p])
+                                               / viscosity;
+                                       u_new = ffz * del_x_slope * del_y_slope;
+                                     })
+        );
+    });
+  }          /* End ipatch loop */
 
   /*
    * Reset values inserted for the DirichletBC back to the decoupled
