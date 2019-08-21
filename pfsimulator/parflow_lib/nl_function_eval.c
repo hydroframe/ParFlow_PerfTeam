@@ -551,24 +551,24 @@ double      *FBx_dat, *FBy_dat, *FBz_dat;     //@RMM
 
     pp = SubvectorData(p_sub);
 
-    for (ipatch = 0; ipatch < BCStructNumPatches(bc_struct); ipatch++)
+    Do_BCContrib(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values,
     {
-      bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
-
-      switch (BCStructBCType(bc_struct, ipatch))
-      {
-        case DirichletBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            value = bc_patch_values[ival];
-            pp[ip + fdir[0] * 1 + fdir[1] * sy_p + fdir[2] * sz_p] = value;
-          });
-          break;
-        }
-      }        /* End switch BCtype */
-    }          /* End ipatch loop */
+      int data_idx = 0;
+      ApplyBCPatch(DirichletBC,
+                   PROLOGUE({
+                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                       value = bc_patch_values[ival];
+                       data_idx = 0;
+                     }),
+                   EPILOGUE({ pp[data_idx] = value; }),
+                   FACE(Left, { data_idx = ip - 1; }),
+                   FACE(Right, { data_idx = ip + 1; }),
+                   FACE(Down, { data_idx = -sy_p; }),
+                   FACE(Up, { data_idx = sy_p; }),
+                   FACE(Back, { data_idx = -sz_p; }),
+                   FACE(Front, { data_idx = sz_p; })
+        );
+    });
   }            /* End subgrid loop */
 
   /* Calculate relative permeability values overwriting current
@@ -1833,27 +1833,27 @@ double      *FBx_dat, *FBy_dat, *FBz_dat;     //@RMM
     pp = SubvectorData(p_sub);
     fp = SubvectorData(f_sub);
 
-    for (ipatch = 0; ipatch < BCStructNumPatches(bc_struct); ipatch++)
+    Do_BCContrib(i, j, k, ival, bc_struct, ipatch, is, bc_patch_values,
     {
-      bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
-
-      switch (BCStructBCType(bc_struct, ipatch))
-      {
-        case DirichletBC:
-        {
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            ip = SubvectorEltIndex(p_sub, i, j, k);
-            value = bc_patch_values[ival];
-// SGS FIXME why is this needed?
-//#undef max
-            pp[ip + fdir[0] * 1 + fdir[1] * sy_p + fdir[2] * sz_p] = -FLT_MAX;
-            fp[ip + fdir[0] * 1 + fdir[1] * sy_p + fdir[2] * sz_p] = 0.0;
-          });
-          break;
-        }
-      }        /* End switch BCtype */
-    }          /* End ipatch loop */
+      int data_idx = 0;
+      ApplyBCPatch(DirichletBC,
+                   PROLOGUE({
+                       ip = SubvectorEltIndex(p_sub, i, j, k);
+                       value = bc_patch_values[ival];
+                       data_idx = 0;
+                     }),
+                   EPILOGUE({
+                       pp[data_idx] = -FLT_MAX;
+                       fp[data_idx] = 0.0;
+                     }),
+                   FACE(Left, { data_idx = ip - 1; }),
+                   FACE(Right, { data_idx = ip + 1; }),
+                   FACE(Down, { data_idx = -sy_p; }),
+                   FACE(Up, { data_idx = sy_p; }),
+                   FACE(Back, { data_idx = -sz_p; }),
+                   FACE(Front, { data_idx = sz_p; })
+        );
+    });
   }            /* End subgrid loop */
 
   FreeBCStruct(bc_struct);
