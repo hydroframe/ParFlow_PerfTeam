@@ -417,15 +417,18 @@ void    RichardsJacobianEval(
   /* Calculate time term contributions. */
 
 
-  /*
-    PFModuleInvokeType(PhaseDensityInvoke, density_module, (0, pressure, density, &dtmp, &dtmp,
-    CALCFCN));
-    PFModuleInvokeType(PhaseDensityInvoke, density_module, (0, pressure, density_der, &dtmp,
-    &dtmp, CALCDER));
-  */
+#if 0
+  PFModuleInvokeType(PhaseDensityInvoke, density_module,
+                     (0, pressure, density, &dtmp, &dtmp, CALCFCN));
+  PFModuleInvokeType(PhaseDensityInvoke, density_module,
+                     (0, pressure, density_der, &dtmp, &dtmp, CALCDER));
+#elif 1
+  PHASE_DENSITY_MODULE(density_module, 0, pressure, density, &dtmp, &dtmp, CALCFCN);
+  PHASE_DENSITY_MODULE(density_module, 0, pressure, density_der, &dtmp, &dtmp, CALCDER);
+#endif
 
-  {
-    GetModulePublicXtra(PhaseDensity, density_module, pdensity_xtra);
+#if 0
+  GetModulePublicXtra(PhaseDensity, density_module, pdensity_xtra);
 
     int pd_phase = 0;
     Vector *phase_pressure = pressure;
@@ -435,7 +438,6 @@ void    RichardsJacobianEval(
     int fcn = CALCFCN;
     int sg;
 
-#if 0
     // Fused loop version, since we know neither density is null and use the same phase type
     // as well as share the same coordinates
     /*
@@ -541,508 +543,19 @@ void    RichardsJacobianEval(
       }
     }
 #endif
+
 #if 0
-    // Simpler version, since we know density_v is not null
-    switch ((pdensity_xtra->type[pd_phase])) {
-      case 0:
-      {
-        PhaseDensityType0 *dummy = (PhaseDensityType0*)(pdensity_xtra->data[pd_phase]);
-        const double constant = (dummy->constant);
-        Grid *pd_grid = VectorGrid(density_v);
-        ForSubgridI(sg, GridSubgrids(pd_grid))
-        {
-          subgrid = GridSubgrid(pd_grid, sg);
-
-          d_sub = VectorSubvector(density_v, sg);
-
-          ix = SubgridIX(subgrid) - 1;
-          iy = SubgridIY(subgrid) - 1;
-          iz = SubgridIZ(subgrid) - 1;
-
-          nx = SubgridNX(subgrid) + 2;
-          ny = SubgridNY(subgrid) + 2;
-          nz = SubgridNZ(subgrid) + 2;
-
-          nx_d = SubvectorNX(d_sub);
-          ny_d = SubvectorNY(d_sub);
-          nz_d = SubvectorNZ(d_sub);
-
-          dp = SubvectorElt(d_sub, ix, iy, iz);
-
-          id = 0;
-          BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                    id, nx_d, ny_d, nz_d, 1, 1, 1,
-          {
-            dp[id] = constant;
-          });
-        }
-
-        density_v = density_der;
-        pd_grid = VectorGrid(density_v);
-        ForSubgridI(sg, GridSubgrids(pd_grid))
-        {
-          subgrid = GridSubgrid(pd_grid, sg);
-
-          d_sub = VectorSubvector(density_v, sg);
-
-          ix = SubgridIX(subgrid) - 1;
-          iy = SubgridIY(subgrid) - 1;
-          iz = SubgridIZ(subgrid) - 1;
-
-          nx = SubgridNX(subgrid) + 2;
-          ny = SubgridNY(subgrid) + 2;
-          nz = SubgridNZ(subgrid) + 2;
-
-          nx_d = SubvectorNX(d_sub);
-          ny_d = SubvectorNY(d_sub);
-          nz_d = SubvectorNZ(d_sub);
-
-          dp = SubvectorElt(d_sub, ix, iy, iz);
-
-          id = 0;
-          BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                    id, nx_d, ny_d, nz_d, 1, 1, 1,
-          {
-            dp[id] = 0.0;
-          });
-        }
-        break;
-      }
-
-      case 1:
-      {
-        double ref, comp;
-        PhaseDensityType1 *dummy = (PhaseDensityType1*)(pdensity_xtra->data[pd_phase]);
-        ref = (dummy->reference_density);
-        comp = (dummy->compressibility_constant);
-
-        Grid *pd_grid = VectorGrid(density_v);
-        ForSubgridI(sg, GridSubgrids(pd_grid))
-        {
-          subgrid = GridSubgrid(pd_grid, sg);
-
-          p_sub = VectorSubvector(phase_pressure, sg);
-          d_sub = VectorSubvector(density_v, sg);
-
-          ix = SubgridIX(subgrid) - 1;
-          iy = SubgridIY(subgrid) - 1;
-          iz = SubgridIZ(subgrid) - 1;
-
-          nx = SubgridNX(subgrid) + 2;
-          ny = SubgridNY(subgrid) + 2;
-          nz = SubgridNZ(subgrid) + 2;
-
-          nx_p = SubvectorNX(p_sub);
-          ny_p = SubvectorNY(p_sub);
-          nz_p = SubvectorNZ(p_sub);
-
-          nx_d = SubvectorNX(d_sub);
-          ny_d = SubvectorNY(d_sub);
-          nz_d = SubvectorNZ(d_sub);
-
-          pp = SubvectorElt(p_sub, ix, iy, iz);
-          dp = SubvectorElt(d_sub, ix, iy, iz);
-
-          ip = 0;
-          id = 0;
-          BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                    ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                    id, nx_d, ny_d, nz_d, 1, 1, 1,
-          {
-            dp[id] = ref * exp(pp[ip] * comp);
-          });
-        }
-
-        density_v = density_der;
-        pd_grid = VectorGrid(density_v);
-        ForSubgridI(sg, GridSubgrids(pd_grid))
-        {
-          subgrid = GridSubgrid(pd_grid, sg);
-
-          p_sub = VectorSubvector(phase_pressure, sg);
-          d_sub = VectorSubvector(density_v, sg);
-
-          ix = SubgridIX(subgrid) - 1;
-          iy = SubgridIY(subgrid) - 1;
-          iz = SubgridIZ(subgrid) - 1;
-
-          nx = SubgridNX(subgrid) + 2;
-          ny = SubgridNY(subgrid) + 2;
-          nz = SubgridNZ(subgrid) + 2;
-
-          nx_p = SubvectorNX(p_sub);
-          ny_p = SubvectorNY(p_sub);
-          nz_p = SubvectorNZ(p_sub);
-
-          nx_d = SubvectorNX(d_sub);
-          ny_d = SubvectorNY(d_sub);
-          nz_d = SubvectorNZ(d_sub);
-
-          pp = SubvectorElt(p_sub, ix, iy, iz);
-          dp = SubvectorElt(d_sub, ix, iy, iz);
-
-          ip = 0;
-          id = 0;
-          BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                    ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                    id, nx_d, ny_d, nz_d, 1, 1, 1,
-          {
-            dp[id] = comp * ref * exp(pp[ip] * comp);
-          });
-        }
-        break;
-      }
-    }
+  PFModuleInvokeType(SaturationInvoke, saturation_module,
+                     (saturation, pressure, density, gravity, problem_data, CALCFCN));
+  PFModuleInvokeType(SaturationInvoke, saturation_module,
+                     (saturation_der, pressure, density, gravity, problem_data, CALCDER));
+#elif 1
+  /* Note: gravity and problem_data area already in scope, don't need to pass through to
+     the macro */
+  SATURATION_MODULE(saturation_module, saturation, pressure, density, CALCFCN);
+  SATURATION_MODULE(saturation_module, saturation_der, pressure, density, CALCDER);
 #endif
-#if 1
-    switch ((pdensity_xtra->type[pd_phase])) {
-      case 0:
-      {
-        double constant;
-        PhaseDensityType0 *dummy = (PhaseDensityType0*)(pdensity_xtra->data[pd_phase]);
-        constant = (dummy->constant);
 
-        if (density_v != NULL)
-        {
-          Grid *pd_grid = VectorGrid(density_v);
-          ForSubgridI(sg, GridSubgrids(pd_grid))
-          {
-            subgrid = GridSubgrid(pd_grid, sg);
-
-            d_sub = VectorSubvector(density_v, sg);
-
-            ix = SubgridIX(subgrid) - 1;
-            iy = SubgridIY(subgrid) - 1;
-            iz = SubgridIZ(subgrid) - 1;
-
-            nx = SubgridNX(subgrid) + 2;
-            ny = SubgridNY(subgrid) + 2;
-            nz = SubgridNZ(subgrid) + 2;
-
-            nx_d = SubvectorNX(d_sub);
-            ny_d = SubvectorNY(d_sub);
-            nz_d = SubvectorNZ(d_sub);
-
-            dp = SubvectorElt(d_sub, ix, iy, iz);
-
-            id = 0;
-            if (fcn == CALCFCN)
-            {
-              BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                        id, nx_d, ny_d, nz_d, 1, 1, 1,
-              {
-                dp[id] = constant;
-              });
-            }
-            else   /* fcn = CALCDER */
-            {
-              BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                        id, nx_d, ny_d, nz_d, 1, 1, 1,
-              {
-                dp[id] = 0.0;
-              });
-            }   /* End if fcn */
-          }    /* End subgrid loop */
-        }      /* End if density_v is not NULL */
-        else
-        {
-          if (fcn == CALCFCN)
-          {
-            (*density_d) = constant;
-          }
-          else  /* fcn = CALCDER */
-          {
-            (*density_d) = 0.0;
-          }
-        }      /* End else */
-        break;
-      }        /* End case 0 */
-
-      case 1:
-      {
-        double ref, comp;
-        PhaseDensityType1 *dummy = (PhaseDensityType1*)(pdensity_xtra->data[pd_phase]);
-        ref = (dummy->reference_density);
-        comp = (dummy->compressibility_constant);
-
-        if (density_v != NULL)
-        {
-          Grid *pd_grid = VectorGrid(density_v);
-          ForSubgridI(sg, GridSubgrids(pd_grid))
-          {
-            subgrid = GridSubgrid(pd_grid, sg);
-
-            p_sub = VectorSubvector(phase_pressure, sg);
-            d_sub = VectorSubvector(density_v, sg);
-
-            ix = SubgridIX(subgrid) - 1;
-            iy = SubgridIY(subgrid) - 1;
-            iz = SubgridIZ(subgrid) - 1;
-
-            nx = SubgridNX(subgrid) + 2;
-            ny = SubgridNY(subgrid) + 2;
-            nz = SubgridNZ(subgrid) + 2;
-
-            nx_p = SubvectorNX(p_sub);
-            ny_p = SubvectorNY(p_sub);
-            nz_p = SubvectorNZ(p_sub);
-
-            nx_d = SubvectorNX(d_sub);
-            ny_d = SubvectorNY(d_sub);
-            nz_d = SubvectorNZ(d_sub);
-
-            pp = SubvectorElt(p_sub, ix, iy, iz);
-            dp = SubvectorElt(d_sub, ix, iy, iz);
-
-            ip = 0;
-            id = 0;
-
-            if (fcn == CALCFCN)
-            {
-              BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                        ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                        id, nx_d, ny_d, nz_d, 1, 1, 1,
-              {
-                dp[id] = ref * exp(pp[ip] * comp);
-              });
-            }
-            else          /* fcn = CALCDER */
-            {
-              BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                        ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                        id, nx_d, ny_d, nz_d, 1, 1, 1,
-              {
-                dp[id] = comp * ref * exp(pp[ip] * comp);
-              });
-            }
-          }
-        }
-        else
-        {
-          if (fcn == CALCFCN)
-          {
-            (*density_d) = ref * exp((*pressure_d) * comp);
-          }
-          else
-          {
-            (*density_d) = comp * ref * exp((*pressure_d) * comp);
-          }
-        }
-
-        break;
-      }        /* End case 1 */
-    }
-
-
-    // Do it again for density_der
-    density_v = density_der;
-    fcn = CALCDER;
-    switch ((pdensity_xtra->type[pd_phase])) {
-      case 0:
-      {
-        double constant;
-        PhaseDensityType0 *dummy = (PhaseDensityType0*)(pdensity_xtra->data[pd_phase]);
-        constant = (dummy->constant);
-
-        if (density_v != NULL)
-        {
-          Grid *pd_grid = VectorGrid(density_v);
-          ForSubgridI(sg, GridSubgrids(pd_grid))
-          {
-            subgrid = GridSubgrid(pd_grid, sg);
-
-            d_sub = VectorSubvector(density_v, sg);
-
-            ix = SubgridIX(subgrid) - 1;
-            iy = SubgridIY(subgrid) - 1;
-            iz = SubgridIZ(subgrid) - 1;
-
-            nx = SubgridNX(subgrid) + 2;
-            ny = SubgridNY(subgrid) + 2;
-            nz = SubgridNZ(subgrid) + 2;
-
-            nx_d = SubvectorNX(d_sub);
-            ny_d = SubvectorNY(d_sub);
-            nz_d = SubvectorNZ(d_sub);
-
-            dp = SubvectorElt(d_sub, ix, iy, iz);
-
-            id = 0;
-            if (fcn == CALCFCN)
-            {
-              BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                        id, nx_d, ny_d, nz_d, 1, 1, 1,
-              {
-                dp[id] = constant;
-              });
-            }
-            else   /* fcn = CALCDER */
-            {
-              BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                        id, nx_d, ny_d, nz_d, 1, 1, 1,
-              {
-                dp[id] = 0.0;
-              });
-            }   /* End if fcn */
-          }    /* End subgrid loop */
-        }      /* End if density_v is not NULL */
-        else
-        {
-          if (fcn == CALCFCN)
-          {
-            (*density_d) = constant;
-          }
-          else  /* fcn = CALCDER */
-          {
-            (*density_d) = 0.0;
-          }
-        }      /* End else */
-        break;
-      }        /* End case 0 */
-
-      case 1:
-      {
-        double ref, comp;
-        PhaseDensityType1 *dummy = (PhaseDensityType1*)(pdensity_xtra->data[pd_phase]);
-        ref = (dummy->reference_density);
-        comp = (dummy->compressibility_constant);
-
-        if (density_v != NULL)
-        {
-          Grid *pd_grid = VectorGrid(density_v);
-          ForSubgridI(sg, GridSubgrids(pd_grid))
-          {
-            subgrid = GridSubgrid(pd_grid, sg);
-
-            p_sub = VectorSubvector(phase_pressure, sg);
-            d_sub = VectorSubvector(density_v, sg);
-
-            ix = SubgridIX(subgrid) - 1;
-            iy = SubgridIY(subgrid) - 1;
-            iz = SubgridIZ(subgrid) - 1;
-
-            nx = SubgridNX(subgrid) + 2;
-            ny = SubgridNY(subgrid) + 2;
-            nz = SubgridNZ(subgrid) + 2;
-
-            nx_p = SubvectorNX(p_sub);
-            ny_p = SubvectorNY(p_sub);
-            nz_p = SubvectorNZ(p_sub);
-
-            nx_d = SubvectorNX(d_sub);
-            ny_d = SubvectorNY(d_sub);
-            nz_d = SubvectorNZ(d_sub);
-
-            pp = SubvectorElt(p_sub, ix, iy, iz);
-            dp = SubvectorElt(d_sub, ix, iy, iz);
-
-            ip = 0;
-            id = 0;
-
-            if (fcn == CALCFCN)
-            {
-              BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                        ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                        id, nx_d, ny_d, nz_d, 1, 1, 1,
-              {
-                dp[id] = ref * exp(pp[ip] * comp);
-              });
-            }
-            else          /* fcn = CALCDER */
-            {
-              BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                        ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                        id, nx_d, ny_d, nz_d, 1, 1, 1,
-              {
-                dp[id] = comp * ref * exp(pp[ip] * comp);
-              });
-            }
-          }
-        }
-        else
-        {
-          if (fcn == CALCFCN)
-          {
-            (*density_d) = ref * exp((*pressure_d) * comp);
-          }
-          else
-          {
-            (*density_d) = comp * ref * exp((*pressure_d) * comp);
-          }
-        }
-
-        break;
-      }        /* End case 1 */
-    }
-#endif
-  }
-
-  // Deal with scope variable name conflicts
-  {
-    GetModulePublicXtra(Saturation, saturation_module, sat_xtra);
-    Vector *phase_saturation;
-    Vector *phase_pressure;
-    Vector *phase_density;
-    //double gravity; // Already in scope
-    //ProblemData *problem_data; // Already in scope
-    int fcn, sg;
-
-    phase_saturation = saturation;
-    phase_pressure = pressure;
-    phase_density = density;
-    fcn = CALCFCN;
-
-    GrGeomSolid   *gr_solid, *gr_domain;
-
-    Subvector     *ps_sub;
-    Subvector     *pp_sub;
-    Subvector     *pd_sub;
-    Subvector     *satRF_sub;
-    Subvector     *n_values_sub;
-    Subvector     *alpha_values_sub;
-    Subvector     *s_res_values_sub;
-    Subvector     *s_sat_values_sub;
-
-    double        *psdat, *ppdat, *pddat, *satRFdat;
-    double        *n_values_dat, *alpha_values_dat;
-    double        *s_res_values_dat, *s_sat_values_dat;
-
-    int ix, iy, iz, r;
-    int nx, ny, nz;
-
-    int i, j, k, ips, ipp, ipd, ipRF;
-
-    int n_index, alpha_index, s_res_index, s_sat_index;
-
-    int            *region_indices, num_regions, ir;
-
-    Grid *grid = VectorGrid(phase_saturation);
-    SubgridArray *subgrids = GridSubgrids(grid);
-#undef max
-    InitVectorAll(phase_saturation, -FLT_MAX);
-
-    SATURATION_MODULE;
-
-    // Repeat for saturation_der
-    fcn = CALCDER;
-    phase_saturation = saturation_der;
-    grid = VectorGrid(phase_saturation);
-    subgrids = GridSubgrids(grid);
-    InitVectorAll(phase_saturation, -FLT_MAX);
-
-    SATURATION_MODULE;
-
-  }
-
-
-  /*
-  PFModuleInvokeType(SaturationInvoke, saturation_module, (saturation, pressure,
-                                                           density, gravity, problem_data,
-                                                           CALCFCN));
-  PFModuleInvokeType(SaturationInvoke, saturation_module, (saturation_der, pressure,
-                                                           density, gravity, problem_data,
-                                                           CALCDER));
-  */
 
   ForSubgridI(is, GridSubgrids(grid))
   {
@@ -1274,6 +787,7 @@ void    RichardsJacobianEval(
                                 ipatch, is,
               {
                 ref_press = DirEquilRefPatchValue(interval_data);
+                /* PHASE_DENSITY_MODULE(phase_density, 0, NULL, NULL, &ref_press, &ref_den, CALCFCN) */
                 PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                    (0, NULL, NULL, &ref_press, &ref_den,
                                     CALCFCN));
@@ -1300,6 +814,9 @@ void    RichardsJacobianEval(
                 {
                   if (iterations > -1)
                   {
+                    /* PHASE_DENSITY_MODULE(phase_density, 0, NULL, NULL, */
+                    /*                      &patch_values[ival], &density_der, */
+                    /*                      CALCDER); */
                     PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                        (0, NULL, NULL, &patch_values[ival],
                                         &density_der, CALCDER));
@@ -1311,6 +828,10 @@ void    RichardsJacobianEval(
                   {
                     patch_values[ival] = ref_press;
                   }
+
+                  /* PHASE_DENSITY_MODULE(phase_density, 0, NULL, NULL, */
+                  /*                      &patch_values[ival], &density, */
+                  /*                      CALCFCN); */
                   PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                      (0, NULL, NULL, &patch_values[ival],
                                       &density, CALCFCN));
@@ -1342,12 +863,20 @@ void    RichardsJacobianEval(
                 {
                   interface_press = DirEquilRefPatchValueAtInterface(
                                                                      interval_data, phase);
+                  /* PHASE_DENSITY_MODULE(phase_density, (phase-1), NULL, NULL, */
+                  /*                      &interface_press, &interface_den, */
+                  /*                      CALCFCN); */
                   PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                      (phase - 1, NULL, NULL, &interface_press,
                                       &interface_den, CALCFCN));
+
                   offset = (interface_press - ref_press)
                            / (0.5 * (interface_den + ref_den) * gravity);
                   ref_press = interface_press;
+
+                  /* PHASE_DENSITY_MODULE(phase_density, phase, NULL, NULL, */
+                  /*                      &ref_press, &ref_den, */
+                  /*                      CALCFCN); */
                   PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                      (phase, NULL, NULL, &ref_press, &ref_den,
                                       CALCFCN));
@@ -1368,6 +897,9 @@ void    RichardsJacobianEval(
                     {
                       if (iterations > -1)
                       {
+                        /* PHASE_DENSITY_MODULE(phase_density, phase, NULL, NULL, */
+                        /*                      &patch_values[ival], &density_der, */
+                        /*                      CALCDER); */
                         PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                            (phase, NULL, NULL, &patch_values[ival],
                                             &density_der, CALCDER));
@@ -1383,6 +915,9 @@ void    RichardsJacobianEval(
                         patch_values[ival] = ref_press;
                       }
 
+                      /* PHASE_DENSITY_MODULE(phase_density, phase, NULL, NULL, */
+                      /*                      &patch_values[ival], &density, */
+                      /*                      CALCFCN); */
                       PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                          (phase, NULL, NULL,
                                           &patch_values[ival], &density,
@@ -1492,9 +1027,14 @@ void    RichardsJacobianEval(
 
                 ref_press = DirEquilPLinearValue(interval_data, ip - 1)
                             + slope * (xy - DirEquilPLinearPoint(interval_data, ip - 1));
+
+                /* PHASE_DENSITY_MODULE(phase_density, 0, NULL, NULL, */
+                /*                      &ref_press, &ref_den, */
+                /*                      CALCFCN); */
                 PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                    (0, NULL, NULL, &ref_press, &ref_den,
                                     CALCFCN));
+
                 fcn_val = 0.0;
                 nonlin_resid = 1.0;
                 iterations = -1;
@@ -1515,9 +1055,13 @@ void    RichardsJacobianEval(
                 {
                   if (iterations > -1)
                   {
+                    /* PHASE_DENSITY_MODULE(phase_density, 0, NULL, NULL, */
+                    /*                      &patch_values[ival], &density_der, */
+                    /*                      CALCDER); */
                     PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                        (0, NULL, NULL, &patch_values[ival],
                                         &density_der, CALCDER));
+
                     dtmp = 1.0 - 0.5 * density_der * gravity * z;
                     patch_values[ival] = patch_values[ival] - fcn_val / dtmp;
                   }
@@ -1525,6 +1069,10 @@ void    RichardsJacobianEval(
                   {
                     patch_values[ival] = ref_press;
                   }
+
+                  /* PHASE_DENSITY_MODULE(phase_density, 0, NULL, NULL, */
+                  /*                      &patch_values[ival], &density, */
+                  /*                      CALCFCN); */
                   PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                      (0, NULL, NULL, &patch_values[ival],
                                       &density, CALCFCN));
@@ -1554,12 +1102,22 @@ void    RichardsJacobianEval(
                 {
                   interface_press = DirEquilPLinearValueAtInterface(
                                                                     interval_data, phase);
+
+
+                  /* PHASE_DENSITY_MODULE(phase_density, (phase-1), NULL, NULL, */
+                  /*                      &interface_press, &interface_den, */
+                  /*                      CALCFCN); */
                   PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                      (phase - 1, NULL, NULL, &interface_press,
                                       &interface_den, CALCFCN));
+
                   offset = (interface_press - ref_press)
                            / (0.5 * (interface_den + ref_den) * gravity);
                   ref_press = interface_press;
+
+                  /* PHASE_DENSITY_MODULE(phase_density, phase, NULL, NULL, */
+                  /*                      &ref_press, &ref_den, */
+                  /*                      CALCFCN); */
                   PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                      (phase, NULL, NULL, &ref_press, &ref_den,
                                       CALCFCN));
@@ -1580,6 +1138,10 @@ void    RichardsJacobianEval(
                     {
                       if (iterations > -1)
                       {
+
+                        /* PHASE_DENSITY_MODULE(phase_density, phase, NULL, NULL, */
+                        /*                      &patch_values[ival], &density_der, */
+                        /*                      CALCDER); */
                         PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                            (phase, NULL, NULL, &patch_values[ival],
                                             &density_der, CALCDER));
@@ -1594,6 +1156,9 @@ void    RichardsJacobianEval(
                         patch_values[ival] = ref_press;
                       }
 
+                      /* PHASE_DENSITY_MODULE(phase_density, phase, NULL, NULL, */
+                      /*                      &patch_values[ival], &density, */
+                      /*                      CALCFCN); */
                       PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                          (phase, NULL, NULL,
                                           &patch_values[ival], &density,
@@ -1726,6 +1291,10 @@ void    RichardsJacobianEval(
 
             /* Calculate density using dtmp as dummy argument. */
             dtmp = 0.0;
+
+            /* PHASE_DENSITY_MODULE(phase_density, 0, NULL, NULL, */
+            /*                      &dtmp, &density, */
+            /*                      CALCFCN); */
             PFModuleInvokeType(PhaseDensityInvoke, phase_density,
                                (0, NULL, NULL, &dtmp, &density, CALCFCN));
 
@@ -2779,328 +2348,16 @@ void    RichardsJacobianEval(
             value = bc_patch_values[ival];
 
             // Arg names: phase, phase_pressure, density_v, pressure_d, density_d, fcn
-            /*
-            PFModuleInvokeType(PhaseDensityInvoke, density_module,
-                               (0, NULL, NULL, &value, &den_d, CALCFCN));
-            PFModuleInvokeType(PhaseDensityInvoke, density_module,
-                               (0, NULL, NULL, &value, &dend_d, CALCDER));
-            */
-            // Variables redeclared as they appear in the above function calls
 
-            {
-              GetModulePublicXtra(PhaseDensity, density_module, public_xtra);
+            /* PFModuleInvokeType(PhaseDensityInvoke, density_module, */
+            /*                    (0, NULL, NULL, &value, &den_d, CALCFCN)); */
+            /* PFModuleInvokeType(PhaseDensityInvoke, density_module, */
+            /*                    (0, NULL, NULL, &value, &dend_d, CALCDER)); */
 
-              Vector *phase_pressure = NULL;
-              int phase = 0;
-              Vector *density_v = NULL;
-              double *pressure_d = &value;
-              double *density_d = &den_d;
-              int fcn = CALCFCN;
-
-              double ref;
-              double comp;
-
-              Grid          *grid;
-              Subvector     *p_sub;
-              Subvector     *d_sub;
-              double        *pp;
-              double        *dp;
-              Subgrid       *subgrid;
-              int sg;
-              int ix;
-              int iy;
-              int iz;
-              int nx;
-              int ny;
-              int nz;
-              int nx_p;
-              int ny_p;
-              int nz_p;
-              int nx_d;
-              int ny_d;
-              int nz_d;
-              int ip;
-              int id;
-
-              switch ((public_xtra->type[phase]))
-              {
-                case 0:
-                {
-                  double constant;
-                  GetDummyType(PhaseDensity, 0, (public_xtra->data[phase]), dummy0);
-
-                  constant = (dummy0->constant);
-
-                  if (density_v != NULL)
-                  {
-                    grid = VectorGrid(density_v);
-                    ForSubgridI(sg, GridSubgrids(grid))
-                    {
-                      subgrid = GridSubgrid(grid, sg);
-
-                      d_sub = VectorSubvector(density_v, sg);
-
-                      ix = SubgridIX(subgrid) - 1;
-                      iy = SubgridIY(subgrid) - 1;
-                      iz = SubgridIZ(subgrid) - 1;
-
-                      nx = SubgridNX(subgrid) + 2;
-                      ny = SubgridNY(subgrid) + 2;
-                      nz = SubgridNZ(subgrid) + 2;
-
-                      nx_d = SubvectorNX(d_sub);
-                      ny_d = SubvectorNY(d_sub);
-                      nz_d = SubvectorNZ(d_sub);
-
-                      dp = SubvectorElt(d_sub, ix, iy, iz);
-
-                      id = 0;
-                      if (fcn == CALCFCN)
-                      {
-                        BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                                  id, nx_d, ny_d, nz_d, 1, 1, 1,
-                        {
-                          dp[id] = constant;
-                        });
-                      }
-                      else   /* fcn = CALCDER */
-                      {
-                        BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                                  id, nx_d, ny_d, nz_d, 1, 1, 1,
-                        {
-                          dp[id] = 0.0;
-                        });
-                      }   /* End if fcn */
-                    }    /* End subgrid loop */
-                  }      /* End if density_v is not NULL */
-                  else
-                  {
-                    if (fcn == CALCFCN)
-                    {
-                      (*density_d) = constant;
-                    }
-                    else  /* fcn = CALCDER */
-                    {
-                      (*density_d) = 0.0;
-                    }
-                  }      /* End else */
-                  break;
-                }        /* End case 0 */
-
-                case 1:
-                {
-                  GetDummyType(PhaseDensity, 1, (public_xtra->data[phase]), dummy1);
-                  ref = (dummy1->reference_density);
-                  comp = (dummy1->compressibility_constant);
-
-                  if (density_v != NULL)
-                  {
-                    grid = VectorGrid(density_v);
-                    ForSubgridI(sg, GridSubgrids(grid))
-                    {
-                      subgrid = GridSubgrid(grid, sg);
-
-                      p_sub = VectorSubvector(phase_pressure, sg);
-                      d_sub = VectorSubvector(density_v, sg);
-
-                      ix = SubgridIX(subgrid) - 1;
-                      iy = SubgridIY(subgrid) - 1;
-                      iz = SubgridIZ(subgrid) - 1;
-
-                      nx = SubgridNX(subgrid) + 2;
-                      ny = SubgridNY(subgrid) + 2;
-                      nz = SubgridNZ(subgrid) + 2;
-
-                      nx_p = SubvectorNX(p_sub);
-                      ny_p = SubvectorNY(p_sub);
-                      nz_p = SubvectorNZ(p_sub);
-
-                      nx_d = SubvectorNX(d_sub);
-                      ny_d = SubvectorNY(d_sub);
-                      nz_d = SubvectorNZ(d_sub);
-
-                      pp = SubvectorElt(p_sub, ix, iy, iz);
-                      dp = SubvectorElt(d_sub, ix, iy, iz);
-
-                      ip = 0;
-                      id = 0;
-
-                      if (fcn == CALCFCN)
-                      {
-                        BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                                  ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                                  id, nx_d, ny_d, nz_d, 1, 1, 1,
-                        {
-                          dp[id] = ref * exp(pp[ip] * comp);
-                        });
-                      }
-                      else          /* fcn = CALCDER */
-                      {
-                        BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                                  ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                                  id, nx_d, ny_d, nz_d, 1, 1, 1,
-                        {
-                          dp[id] = comp * ref * exp(pp[ip] * comp);
-                        });
-                      }
-                    }
-                  }
-                  else
-                  {
-                    if (fcn == CALCFCN)
-                    {
-                      (*density_d) = ref * exp((*pressure_d) * comp);
-                    }
-                    else
-                    {
-                      (*density_d) = comp * ref * exp((*pressure_d) * comp);
-                    }
-                  }
-
-                  break;
-                }        /* End case 1 */
-              }
-
-              fcn = CALCDER;
-              switch ((public_xtra->type[phase]))
-              {
-                case 0:
-                {
-                  double constant;
-                  GetDummyType(PhaseDensity, 0, (public_xtra->data[phase]), dummy0);
-                  constant = (dummy0->constant);
-
-                  if (density_v != NULL)
-                  {
-                    grid = VectorGrid(density_v);
-                    ForSubgridI(sg, GridSubgrids(grid))
-                    {
-                      subgrid = GridSubgrid(grid, sg);
-
-                      d_sub = VectorSubvector(density_v, sg);
-
-                      ix = SubgridIX(subgrid) - 1;
-                      iy = SubgridIY(subgrid) - 1;
-                      iz = SubgridIZ(subgrid) - 1;
-
-                      nx = SubgridNX(subgrid) + 2;
-                      ny = SubgridNY(subgrid) + 2;
-                      nz = SubgridNZ(subgrid) + 2;
-
-                      nx_d = SubvectorNX(d_sub);
-                      ny_d = SubvectorNY(d_sub);
-                      nz_d = SubvectorNZ(d_sub);
-
-                      dp = SubvectorElt(d_sub, ix, iy, iz);
-
-                      id = 0;
-                      if (fcn == CALCFCN)
-                      {
-                        BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                                  id, nx_d, ny_d, nz_d, 1, 1, 1,
-                        {
-                          dp[id] = constant;
-                        });
-                      }
-                      else   /* fcn = CALCDER */
-                      {
-                        BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
-                                  id, nx_d, ny_d, nz_d, 1, 1, 1,
-                        {
-                          dp[id] = 0.0;
-                        });
-                      }   /* End if fcn */
-                    }    /* End subgrid loop */
-                  }      /* End if density_v is not NULL */
-                  else
-                  {
-                    if (fcn == CALCFCN)
-                    {
-                      (*density_d) = constant;
-                    }
-                    else  /* fcn = CALCDER */
-                    {
-                      (*density_d) = 0.0;
-                    }
-                  }      /* End else */
-                  break;
-                }        /* End case 0 */
-
-                case 1:
-                {
-                  GetDummyType(PhaseDensity, 1, (public_xtra->data[phase]), dummy1);
-                  ref = (dummy1->reference_density);
-                  comp = (dummy1->compressibility_constant);
-
-                  if (density_v != NULL)
-                  {
-                    grid = VectorGrid(density_v);
-                    ForSubgridI(sg, GridSubgrids(grid))
-                    {
-                      subgrid = GridSubgrid(grid, sg);
-
-                      p_sub = VectorSubvector(phase_pressure, sg);
-                      d_sub = VectorSubvector(density_v, sg);
-
-                      ix = SubgridIX(subgrid) - 1;
-                      iy = SubgridIY(subgrid) - 1;
-                      iz = SubgridIZ(subgrid) - 1;
-
-                      nx = SubgridNX(subgrid) + 2;
-                      ny = SubgridNY(subgrid) + 2;
-                      nz = SubgridNZ(subgrid) + 2;
-
-                      nx_p = SubvectorNX(p_sub);
-                      ny_p = SubvectorNY(p_sub);
-                      nz_p = SubvectorNZ(p_sub);
-
-                      nx_d = SubvectorNX(d_sub);
-                      ny_d = SubvectorNY(d_sub);
-                      nz_d = SubvectorNZ(d_sub);
-
-                      pp = SubvectorElt(p_sub, ix, iy, iz);
-                      dp = SubvectorElt(d_sub, ix, iy, iz);
-
-                      ip = 0;
-                      id = 0;
-
-                      if (fcn == CALCFCN)
-                      {
-                        BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                                  ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                                  id, nx_d, ny_d, nz_d, 1, 1, 1,
-                        {
-                          dp[id] = ref * exp(pp[ip] * comp);
-                        });
-                      }
-                      else          /* fcn = CALCDER */
-                      {
-                        BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
-                                  ip, nx_p, ny_p, nz_p, 1, 1, 1,
-                                  id, nx_d, ny_d, nz_d, 1, 1, 1,
-                        {
-                          dp[id] = comp * ref * exp(pp[ip] * comp);
-                        });
-                      }
-                    }
-                  }
-                  else
-                  {
-                    if (fcn == CALCFCN)
-                    {
-                      (*density_d) = ref * exp((*pressure_d) * comp);
-                    }
-                    else
-                    {
-                      (*density_d) = comp * ref * exp((*pressure_d) * comp);
-                    }
-                  }
-
-                  break;
-                }        /* End case 1 */
-              }
-            }
-
+            PHASE_DENSITY_MODULE(density_module, 0, NULL, NULL,
+                                 &value, &den_d, CALCFCN);
+            PHASE_DENSITY_MODULE(density_module, 0, NULL, NULL,
+                                 &value, &dend_d, CALCDER);
 
             ip = SubvectorEltIndex(p_sub, i, j, k);
             im = SubmatrixEltIndex(J_sub, i, j, k);
