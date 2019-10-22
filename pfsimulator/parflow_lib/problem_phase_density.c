@@ -50,6 +50,8 @@
 
 #include "parflow.h"
 
+#include "get_modules_xtra.h"
+
 /*--------------------------------------------------------------------------
  * Structures
  *--------------------------------------------------------------------------*/
@@ -72,7 +74,11 @@ typedef struct {
   double compressibility_constant;
 } Type1;                      /* rho_ref exp(compressibility*pressure) */
 
-
+PhaseDensityPublicXtra *GetPhaseDensityXtra(void)
+{
+  PFModule *this_module = ThisPFModule;
+  return (PhaseDensityPublicXtra*)PFModulePublicXtra(this_module);
+}
 /*-------------------------------------------------------------------------
  * PhaseDensity
  *-------------------------------------------------------------------------*/

@@ -28,6 +28,8 @@
 
 #include "parflow.h"
 
+#include "get_modules_xtra.h"
+
 #include <assert.h>
 
 /*--------------------------------------------------------------------------
@@ -111,6 +113,8 @@ typedef struct {
   double **coefficients;
 } Type4;                      /* Polynomial Function for Rel. Perm. */
 
+GET_PUBLICXTRA_FUNC(PhaseRelPerm);
+GET_INSTANCEXTRA_FUNC(PhaseRelPerm);
 
 VanGTable *VanGComputeTable(
                             int    interpolation_method,

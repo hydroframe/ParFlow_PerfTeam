@@ -27,6 +27,7 @@
  **********************************************************************EHEADER*/
 
 #include "parflow.h"
+#include "get_modules_xtra.h"
 
 #include <float.h>
 
@@ -98,6 +99,12 @@ typedef struct {
   Vector  *satRF;
 } Type5;                      /* Spatially varying field over entire domain
                                * read from a file */
+
+SaturationPublicXtra *GetSaturationXtra(void)
+{
+  PFModule *this_module = ThisPFModule;
+  return (SaturationPublicXtra*)PFModulePublicXtra(this_module);
+}
 
 /*--------------------------------------------------------------------------
  * Saturation:

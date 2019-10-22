@@ -30,7 +30,7 @@
 *****************************************************************************/
 
 #include "parflow.h"
-
+#include "get_modules_xtra.h"
 
 /*--------------------------------------------------------------------------
  * Structures
@@ -49,6 +49,18 @@ typedef struct {
   ProblemData  *problem_data;
   Grid         *grid;
 } InstanceXtra;
+
+BCPressurePublicXtra *GetBCPressureXtra()
+{
+  PFModule *this_module = ThisPFModule;
+  return (BCPressurePublicXtra*)PFModulePublicXtra(this_module);
+}
+
+BCPressureInstanceXtra *GetBCPressureInstanceXtra()
+{
+  PFModule *this_module = ThisPFModule;
+  return (BCPressureInstanceXtra*)PFModuleInstanceXtra(this_module);
+}
 
 /*--------------------------------------------------------------------------
  * BCPressure:
