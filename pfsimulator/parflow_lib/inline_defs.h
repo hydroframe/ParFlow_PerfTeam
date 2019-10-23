@@ -304,4 +304,7 @@
     }                                                                   \
   }
 
+// proble, problem_data, vector f, matrix a, double time, vector pressure, int fcn
+//#define RICHARDS_BC_INTERNAL_MODULE(vector, matrix, time, pressure, ftype)
+
 #endif // _INLINE_DEFS_H
