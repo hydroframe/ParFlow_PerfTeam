@@ -60,7 +60,6 @@ set (SRC_FILES advect.F
   n_vector.c
   new_endpts.c
   nl_function_eval.c
-  nl_function_eval.c
   nodiag_scale.c
   overlandflow_eval.c
   overlandflow_eval_diffusive.c
@@ -153,7 +152,29 @@ set (SRC_FILES advect.F
   write_parflow_silo_pmpio.c
   )
 
+if( ${PARFLOW_HAVE_CUDA} )
+  set_source_files_properties(axpy.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(copy.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(globals.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(innerprod.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(matvec.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(mg_semi_restrict.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(mg_semi_prolong.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(nl_function_eval.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(problem_phase_rel_perm.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(problem_phase_source.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(problem_saturation.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(rb_GS_point.c PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(richards_jacobian_eval.c PROPERTIES LANGUAGE CUDA)
+endif( ${PARFLOW_HAVE_CUDA} )
+
 add_library(pfsimulator ${SRC_FILES})
+
+# Separable compilation must be active due to the following declaration:
+# globals.h: extern __constant__  Globals *dev_globals_ptr;
+if( ${PARFLOW_HAVE_CUDA} )
+  set_target_properties(pfsimulator PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+endif( ${PARFLOW_HAVE_CUDA} )
 
 target_link_libraries(pfsimulator pfkinsol amps cjson ${PARFLOW_ETRACE_LIBRARY})
 

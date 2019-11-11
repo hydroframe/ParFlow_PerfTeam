@@ -1,3 +1,6 @@
+#ifndef PARFLOW_CONFIG_H
+#define PARFLOW_CONFIG_H
+
 /*
  * Parflow configure file.
  */
@@ -6,6 +9,8 @@
 /* TODO should get rid of non prefixed versions of these flags; CPP
    symbols should be in PARFLOW namespace.  Should make naming consistent as well */
 
+#cmakedefine PARFLOW_HAVE_CUDA
+#cmakedefine HAVE_CUDA
 
 #cmakedefine PARFLOW_AMPS_LAYER
 #cmakedefine AMPS
@@ -62,6 +67,4 @@
 
 #cmakedefine PARFLOW_HAVE_ETRACE
 
-
-
-
+#endif // PARFLOW_CONFIG_H

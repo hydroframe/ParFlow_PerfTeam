@@ -8,6 +8,44 @@ set (CMAKE_C_STANDARD 11)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 #-----------------------------------------------------------------------------
+# GPU-Acceleration (CUDA)
+#-----------------------------------------------------------------------------
+set (PARFLOW_ENABLE_CUDA False)
+set (PARFLOW_ENABLE_CUDA CACHE BOOL "Enable CUDA")
+if( ${PARFLOW_ENABLE_CUDA} )
+
+# Initialize CUDA
+  include(CheckLanguage)
+  check_language(CUDA)
+  if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_70,code=sm_70 --maxrregcount=62 --expt-extended-lambda")
+    set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G --ptxas-options=-v")
+    set(CMAKE_CUDA_FLAGS_RELEASE "-Xptxas ${CMAKE_CUDA_FLAGS_RELEASE}")
+    message(STATUS "Found CUDA ${CMAKE_CUDA_COMPILER_VERSION} at ${CMAKE_CUDA_COMPILER}")
+    set(PARFLOW_HAVE_CUDA "yes")
+    set(HAVE_CUDA ${PARFLOW_HAVE_CUDA})
+  else(CMAKE_CUDA_COMPILER)
+    message(FATAL_ERROR "ERROR: CUDA installation not found")
+  endif(CMAKE_CUDA_COMPILER)
+
+# Include RapidsAI Memory Manager (RMM) for pool allocation
+#  find_path(RMM_INCLUDE "rmm" HINTS "$ENV{RMM_ROOT}/include")
+#  find_library(RMM_LIBRARY "rmm" HINTS "$ENV{RMM_ROOT}/lib")
+#  if(RMM_INCLUDE AND RMM_LIBRARY)
+#    message(STATUS "RMM: RMM_LIBRARY set to ${RMM_LIBRARY}")
+#    message(STATUS "RMM: RMM_INCLUDE set to ${RMM_INCLUDE}")
+#    add_library(rmm SHARED IMPORTED ${RMM_LIBRARY})
+#    set_target_properties(rmm PROPERTIES IMPORTED_LOCATION ${RMM_LIBRARY})
+#    include_directories ("${RMM_INCLUDE}")
+#    link_directories("${RMM_LIBRARY}")
+#  else(RMM_INCLUDE AND RMM_LIBRARY)
+#    message(FATAL_ERROR "ERROR: RMM installation not found")
+#  endif(RMM_INCLUDE AND RMM_LIBRARY)
+
+endif( ${PARFLOW_ENABLE_CUDA} )
+
+#-----------------------------------------------------------------------------
 # Version number
 #-----------------------------------------------------------------------------
 include (Version)
@@ -22,7 +60,7 @@ git_describe(PARFLOW_VERSION --tags)
 if (NOT PARFLOW_VERSION)
   file (STRINGS "VERSION" PARFLOW_VERSION)
 endif ()
- 
+
 message("Configuring version : ${PARFLOW_VERSION}")
 version_create_variables (PARFLOW)
 
@@ -223,7 +261,7 @@ endif (${PARFLOW_ENABLE_SLURM} OR DEFINED SLURM_ROOT)
 #-----------------------------------------------------------------------------
 if (NOT DEFINED PARFLOW_LIBM)
   find_library(PARFLOW_LIBM m)
-endif (NOT DEFINED PARFLOW_LIBM)		    
+endif (NOT DEFINED PARFLOW_LIBM)
 
 #-----------------------------------------------------------------------------
 # Valgrind
@@ -243,7 +281,7 @@ endif (${PARFLOW_ENABLE_VALGRIND})
 set (PARFLOW_ENABLE_ETRACE False CACHE BOOL "Build with etrace")
 if (${PARFLOW_ENABLE_ETRACE})
   set(PARFLOW_HAVE_ETRACE "yes")
-  
+
   set(PARFLOW_ETRACE_COMPILE_FLAGS "-finstrument-functions")
   set(PARFLOW_ETRACE_LIBRARY "etrace")
 else (${PARFLOW_ENABLE_ETRACE})
@@ -445,7 +483,7 @@ endif()
 install (DIRECTORY ${CMAKE_BINARY_DIR}/config/ DESTINATION config)
 
 #-----------------------------------------------------------------------------
-# Doxygen 
+# Doxygen
 #-----------------------------------------------------------------------------
 set (PARFLOW_ENABLE_DOXYGEN False CACHE BOOL "Enable Doxygen and building of code documentation")
 
@@ -454,7 +492,7 @@ if ( ${PARFLOW_ENABLE_DOXYGEN} )
   if (DOXYGEN_FOUND)
     set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/docs/doxygen)
     set(DOXYGEN_IMAGE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/docs/doxygen/images)
-    
+
     message("Doxygen build started")
 
     doxygen_add_docs(doxygen

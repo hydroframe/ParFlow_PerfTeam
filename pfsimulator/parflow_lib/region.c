@@ -33,6 +33,10 @@
 #include "parflow.h"
 #include "grid.h"
 
+#ifdef HAVE_CUDA
+#include "pfcudamalloc.h"
+#endif
+
 #include <math.h>
 
 /*--------------------------------------------------------------------------
@@ -98,7 +102,6 @@ SubregionArray  *NewSubregionArray()
 
   return new_subregion_array;
 }
-
 
 /*--------------------------------------------------------------------------
  * NewRegion
@@ -370,4 +373,3 @@ void             AppendSubregionArray(
 /*--------------------------------------------------------------------------
  * CommRegFromStencil: RDF todo
  *--------------------------------------------------------------------------*/
-
