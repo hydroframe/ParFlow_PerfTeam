@@ -27,10 +27,15 @@
  **********************************************************************EHEADER*/
 
 #include "parflow.h"
-#include "llnlmath.h"
-#include "llnltyps.h"
+//#include "llnlmath.h"
+//#include "llnltyps.h"
+#include "inline_llnlmath.h"
 //#include "math.h"
 #include "float.h"
+
+#include "get_modules_xtra.h"
+#include "inline_defs.h"
+
 
 /*---------------------------------------------------------------------
  * Define module structures
@@ -236,7 +241,8 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
   BeginTiming(public_xtra->time_index);
 
   /* Initialize function values to zero. */
-  PFVConstInit(0.0, fval);
+  /* PFVConstInit(0.0, fval); */
+  InlinePFVConstInit(0.0, fval);
 
   /* diffusive test here, this is NOT PF style and should be
    * re-done putting keys in BC Pressure Package and adding to the
@@ -250,22 +256,25 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
   handle = InitVectorUpdate(pressure, VectorUpdateAll);
   FinalizeVectorUpdate(handle);
 
-  KW = NewVectorType(grid2d, 1, 1, vector_cell_centered_2D);
-  KE = NewVectorType(grid2d, 1, 1, vector_cell_centered_2D);
-  KN = NewVectorType(grid2d, 1, 1, vector_cell_centered_2D);
-  KS = NewVectorType(grid2d, 1, 1, vector_cell_centered_2D);
-  qx = NewVectorType(grid2d, 1, 1, vector_cell_centered_2D);
-  qy = NewVectorType(grid2d, 1, 1, vector_cell_centered_2D);
+  InlineNewVectorType(grid2d, 1, 1, vector_cell_centered_2D, KW);
+  InlineNewVectorType(grid2d, 1, 1, vector_cell_centered_2D, KE);
+  InlineNewVectorType(grid2d, 1, 1, vector_cell_centered_2D, KN);
+  InlineNewVectorType(grid2d, 1, 1, vector_cell_centered_2D, KS);
+  InlineNewVectorType(grid2d, 1, 1, vector_cell_centered_2D, qx);
+  InlineNewVectorType(grid2d, 1, 1, vector_cell_centered_2D, qy);
 
 
   /* Calculate pressure dependent properties: density and saturation */
-
+#if 0
   PFModuleInvokeType(PhaseDensityInvoke, density_module, (0, pressure, density, &dtmp, &dtmp,
                                                           CALCFCN));
 
   PFModuleInvokeType(SaturationInvoke, saturation_module, (saturation, pressure, density,
                                                            gravity, problem_data, CALCFCN));
-
+#elif 1
+  PHASE_DENSITY_MODULE(density_module, 0, pressure, density, &dtmp, &dtmp, CALCFCN);
+  SATURATION_MODULE(saturation_module, saturation, pressure, density, CALCFCN);
+#endif
 
   /* Calculate accumulation terms for the function values */
 
@@ -275,6 +284,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
     Subgrid* grid2d_subgrid = GridSubgrid(grid2d, is);
     int grid2d_iz = SubgridIZ(grid2d_subgrid);
 
+    ss_sub = VectorSubvector(sstorage, is);
     d_sub = VectorSubvector(density, is);
     od_sub = VectorSubvector(old_density, is);
     p_sub = VectorSubvector(pressure, is);
@@ -330,6 +340,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
     ny_po = SubvectorNY(po_sub);
     nz_po = SubvectorNZ(po_sub);
 
+    ss = SubvectorData(ss_sub);
     dp = SubvectorData(d_sub);
     odp = SubvectorData(od_sub);
     sp = SubvectorData(s_sub);
@@ -350,89 +361,22 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
       del_x_slope = 1.0;
       del_y_slope = 1.0;
 
-      fp[ip] = (sp[ip] * dp[ip] - osp[ip] * odp[ip]) * pop[ipo] * vol * del_x_slope * del_y_slope * z_mult_dat[ip];
-    });
-  }
+      fp[ip] = (sp[ip] * dp[ip] - osp[ip] * odp[ip]) *
+               pop[ipo] * vol * del_x_slope * del_y_slope * z_mult_dat[ip];
+      fp[ip] += ss[ip] * vol * del_x_slope * del_y_slope * z_mult_dat[ip] *
+                (pp[ip] * sp[ip] * dp[ip] - opp[ip] * osp[ip] * odp[ip]);
 
-  /*@ Add in contributions from compressible storage */
-
-  ForSubgridI(is, GridSubgrids(grid))
-  {
-    subgrid = GridSubgrid(grid, is);
-    Subgrid       *grid2d_subgrid = GridSubgrid(grid2d, is);
-    int grid2d_iz = SubgridIZ(grid2d_subgrid);
-
-    ss_sub = VectorSubvector(sstorage, is);
-
-    d_sub = VectorSubvector(density, is);
-    od_sub = VectorSubvector(old_density, is);
-    p_sub = VectorSubvector(pressure, is);
-    op_sub = VectorSubvector(old_pressure, is);
-    s_sub = VectorSubvector(saturation, is);
-    os_sub = VectorSubvector(old_saturation, is);
-    f_sub = VectorSubvector(fval, is);
-
-    /* @RMM added to provide access to zmult */
-    z_mult_sub = VectorSubvector(z_mult, is);
-    /* @RMM added to provide variable dz */
-    z_mult_dat = SubvectorData(z_mult_sub);
-    /* @RMM added to provide access to x/y slopes */
-    x_ssl_sub = VectorSubvector(x_ssl, is);
-    y_ssl_sub = VectorSubvector(y_ssl, is);
-    /* @RMM  added to provide slopes to terrain fns */
-    x_ssl_dat = SubvectorData(x_ssl_sub);
-    y_ssl_dat = SubvectorData(y_ssl_sub);
-
-    /* RDF: assumes resolutions are the same in all 3 directions */
-    r = SubgridRX(subgrid);
-
-    ix = SubgridIX(subgrid);
-    iy = SubgridIY(subgrid);
-    iz = SubgridIZ(subgrid);
-
-    nx = SubgridNX(subgrid);
-    ny = SubgridNY(subgrid);
-    nz = SubgridNZ(subgrid);
-
-    dx = SubgridDX(subgrid);
-    dy = SubgridDY(subgrid);
-    dz = SubgridDZ(subgrid);
-
-    vol = dx * dy * dz;
-
-    nx_f = SubvectorNX(f_sub);
-    ny_f = SubvectorNY(f_sub);
-    nz_f = SubvectorNZ(f_sub);
-
-    ss = SubvectorData(ss_sub);
-
-    dp = SubvectorData(d_sub);
-    odp = SubvectorData(od_sub);
-    sp = SubvectorData(s_sub);
-    pp = SubvectorData(p_sub);
-    opp = SubvectorData(op_sub);
-    osp = SubvectorData(os_sub);
-    fp = SubvectorData(f_sub);
-
-
-    GrGeomInLoop(i, j, k, gr_domain, r, ix, iy, iz, nx, ny, nz,
-    {
-      ip = SubvectorEltIndex(f_sub, i, j, k);
-      io = SubvectorEltIndex(x_ssl_sub, i, j, grid2d_iz);
-
-      /*   del_x_slope = (1.0/cos(atan(x_ssl_dat[io])));
-       * del_y_slope = (1.0/cos(atan(y_ssl_dat[io])));  */
-      del_x_slope = 1.0;
-      del_y_slope = 1.0;
-      fp[ip] += ss[ip] * vol * del_x_slope * del_y_slope * z_mult_dat[ip] * (pp[ip] * sp[ip] * dp[ip] - opp[ip] * osp[ip] * odp[ip]);
     });
   }
 
   /* Add in contributions from source terms - user specified sources and
    * flux wells.  Calculate phase source values overwriting current
    * saturation vector */
-  PFModuleInvokeType(PhaseSourceInvoke, phase_source, (source, 0, problem, problem_data,
-                                                       time));
+#if 0
+  PFModuleInvokeType(PhaseSourceInvoke, phase_source, (source, 0, problem, problem_data, time));
+#elif 1
+  PHASE_SOURCE_MODULE(phase_source, source, 0, time);
+#endif
 
   ForSubgridI(is, GridSubgrids(grid))
   {
@@ -503,8 +447,12 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
     });
   }
 
+#if 0
   bc_struct = PFModuleInvokeType(BCPressureInvoke, bc_pressure,
                                  (problem_data, grid, gr_domain, time));
+#elif 1
+  BC_PRESSURE_MODULE(bc_pressure, bc_struct, grid, gr_domain, time);
+#endif
 
   /*
    * Temporarily insert boundary pressure values for Dirichlet
@@ -1471,77 +1419,35 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
             fp[ip] += dt * dir * u_new;
           });
 
-          // SGS Fix this up later after things are a bit more stable.   Probably should
-          // Use this loop inside the overland flow eval as it is more efficient.
-#if 1
+
           if (diffusive == 0)
           {
-            /* Call overlandflow_eval to compute fluxes across the east, west, north, and south faces */
-            PFModuleInvokeType(OverlandFlowEvalInvoke, overlandflow_module, (grid, is, bc_struct, ipatch, problem_data, pressure, old_pressure,
-                                                                             ke_, kw_, kn_, ks_, qx_, qy_, CALCFCN));
+            /* PFModuleInvokeType(OverlandFlowEvalInvoke, */
+            /*                    overlandflow_module, */
+            /*                    (grid, is, bc_struct, ipatch, */
+            /*                     problem_data, pressure, old_pressure, */
+            /*                     ke_, kw_, kn_, ks_, qx_, qy_, CALCFCN)); */
+            OVERLAND_FLOW_MODULE(overlandflow_module, grid, is, bc_struct,
+                                 ipatch, problem_data, pressure, old_pressure,
+                                 ke_, kw_, kn_, ks_, qx_, qy_, CALCFCN);
           }
           else
           {
-            /*  @RMM this is modified to be kinematic wave routing, with a new module for diffusive wave
-             * routing added */
             double *dummy1, *dummy2, *dummy3, *dummy4;
-            PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff, (grid, is, bc_struct, ipatch, problem_data, pressure, old_pressure,
-                                                                                      ke_, kw_, kn_, ks_,
-                                                                                      dummy1, dummy2, dummy3, dummy4,
-                                                                                      qx_, qy_, CALCFCN));
+            /* PFModuleInvokeType(OverlandFlowEvalDiffInvoke, */
+            /*                    overlandflow_module_diff, */
+            /*                    (grid, is, bc_struct, ipatch, */
+            /*                     problem_data, pressure, old_pressure, */
+            /*                     ke_, kw_, kn_, ks_, */
+            /*                     dummy1, dummy2, dummy3, dummy4, */
+            /*                     qx_, qy_, CALCFCN)); */
+            OVERLAND_DIFFUSIVE_MODULE(overlandflow_module_diff,
+                                      grid, is, bc_struct, ipatch,
+                                      problem_data, pressure, old_pressure,
+                                      ke_, kw_, kn_, ks_,
+                                      dummy1, dummy2, dummy3, dummy4,
+                                      qx_, qy_, CALCFCN);
           }
-#else
-          // SGS TODO can these loops be merged?
-          BCStructPatchLoopOvrlnd(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case 1:
-                  io = SubvectorEltIndex(qx_sub, i, j, 0);
-                  ip = SubvectorEltIndex(p_sub, i, j, k);
-
-                  double dir_x = 0.0;
-                  double dir_y = 0.0;
-                  if (x_sl_dat[io] > 0.0)
-                    dir_x = -1.0;
-                  if (y_sl_dat[io] > 0.0)
-                    dir_y = -1.0;
-                  if (x_sl_dat[io] < 0.0)
-                    dir_x = 1.0;
-                  if (y_sl_dat[io] < 0.0)
-                    dir_y = 1.0;
-
-                  qx_[io] = dir_x * (RPowerR(fabs(x_sl_dat[io]), 0.5) / mann_dat[io]) * RPowerR(pfmax((pp[ip]), 0.0), (5.0 / 3.0));
-
-                  qy_[io] = dir_y * (RPowerR(fabs(y_sl_dat[io]), 0.5) / mann_dat[io]) * RPowerR(pfmax((pp[ip]), 0.0), (5.0 / 3.0));
-
-                  break;
-              }
-            }
-          });
-
-          BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
-          {
-            if (fdir[2])
-            {
-              switch (fdir[2])
-              {
-                case 1:
-                  io = SubvectorEltIndex(ke_sub, i, j, 0);
-
-                  ke_[io] = pfmax(qx_[io], 0.0) - pfmax(-qx_[io + 1], 0.0);
-                  kw_[io] = pfmax(qx_[io - 1], 0.0) - pfmax(-qx_[io], 0.0);
-
-                  kn_[io] = pfmax(qy_[io], 0.0) - pfmax(-qy_[io + sy_p], 0.0);
-                  ks_[io] = pfmax(qy_[io - sy_p], 0.0) - pfmax(-qy_[io], 0.0);
-
-                  break;
-              }
-            }
-          });
-#endif
 
 
 
@@ -1864,11 +1770,16 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
           /*  @RMM this is modified to be kinematic wave routing, with a new module for diffusive wave
            * routing added */
           double *dummy1, *dummy2, *dummy3, *dummy4;
-          PFModuleInvokeType(OverlandFlowEvalKinInvoke, overlandflow_module_kin,
-                             (grid, is, bc_struct, ipatch, problem_data, pressure,
-                              ke_, kw_, kn_, ks_,
-                              dummy1, dummy2, dummy3, dummy4,
-                              qx_, qy_, CALCFCN));
+          /* PFModuleInvokeType(OverlandFlowEvalKinInvoke, overlandflow_module_kin, */
+          /*                    (grid, is, bc_struct, ipatch, problem_data, pressure, */
+          /*                     ke_, kw_, kn_, ks_, */
+          /*                     dummy1, dummy2, dummy3, dummy4, */
+          /*                     qx_, qy_, CALCFCN)); */
+          OVERLAND_KINEMATIC_MODULE(overlandflow_module_kin,
+                                    grid, is, bc_struct, ipatch, problem_data, pressure,
+                                    ke_, kw_, kn_, ks_,
+                                    dummy1, dummy2, dummy3, dummy4,
+                                    qx_, qy_, CALCFCN);
 
           BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
           {
@@ -2073,10 +1984,19 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
            */
 
           double *dummy1, *dummy2, *dummy3, *dummy4;
-          PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff, (grid, is, bc_struct, ipatch, problem_data, pressure, old_pressure,
-                                                                                    ke_, kw_, kn_, ks_,
-                                                                                    dummy1, dummy2, dummy3, dummy4,
-                                                                                    qx_, qy_, CALCFCN));
+          /* PFModuleInvokeType(OverlandFlowEvalDiffInvoke, */
+          /*                    overlandflow_module_diff, */
+          /*                    (grid, is, bc_struct, ipatch, */
+          /*                     problem_data, pressure, old_pressure, */
+          /*                     ke_, kw_, kn_, ks_, */
+          /*                     dummy1, dummy2, dummy3, dummy4, */
+          /*                     qx_, qy_, CALCFCN)); */
+          OVERLAND_DIFFUSIVE_MODULE(overlandflow_module_diff,
+                                    grid, is, bc_struct, ipatch,
+                                    problem_data, pressure, old_pressure,
+                                    ke_, kw_, kn_, ks_,
+                                    dummy1, dummy2, dummy3, dummy4,
+                                    qx_, qy_, CALCFCN);
 
 
           BCStructPatchLoop(i, j, k, fdir, ival, bc_struct, ipatch, is,
@@ -2159,8 +2079,9 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
 
   FreeBCStruct(bc_struct);
 
-  PFModuleInvokeType(RichardsBCInternalInvoke, bc_internal, (problem, problem_data, fval, NULL,
-                                                             time, pressure, CALCFCN));
+  /* PFModuleInvokeType(RichardsBCInternalInvoke, bc_internal, (problem, problem_data, fval, NULL, */
+  /*                                                            time, pressure, CALCFCN)); */
+  RICHARDS_INTERNAL_MODULE(bc_internal, problem, problem_data, fval, NULL, time, pressure, CALCFCN);
 
   EndTiming(public_xtra->time_index);
 

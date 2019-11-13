@@ -39,6 +39,24 @@
   int jinc = (sy) * (nxd) - (nx) * (sx);                              \
   int kinc = (sz) * (nxd) * (nyd) - (ny) * (sy) * (nxd)
 
+#define PRAGMA(args) _Pragma(args)
+
+#define OMP_BoxLoopI0(i, j, k, ix, iy, iz, nx, ny, nz, body)  \
+  {                                                           \
+    PRAGMA("omp parallel for collapse(3)")                    \
+    for (k = iz; k < iz + nz; k++)                            \
+    {                                                         \
+      for (j = iy; j < iy + ny; j++)                          \
+      {                                                       \
+        for (i = ix; i < ix + nx; i++)                        \
+        {                                                     \
+          body;                                               \
+        }                                                     \
+      }                                                       \
+    }                                                         \
+  }
+
+
 #define BoxLoopI0(i, j, k,                \
                   ix, iy, iz, nx, ny, nz, \
                   body)                   \

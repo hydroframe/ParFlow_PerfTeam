@@ -233,4 +233,100 @@ typedef struct {
 
 RichardsBCInternalPublicXtra *GetRichardsBCInternalXtra(void);
 
+// Problem Phase Source Structs
+typedef struct {
+  int num_phases;
+
+  int    *type;
+  void  **data;
+} PhaseSourcePublicXtra;
+
+typedef struct {
+  NameArray regions;
+  int num_regions;
+  int     *region_indices;
+  double  *values;
+} PhaseSourceType0;
+
+typedef struct {
+  int function_type;
+} PhaseSourceType1;
+
+PhaseSourcePublicXtra *GetPhaseSourceXtra(void);
+
+// Problem Phase Rel Perm Structs
+typedef struct {
+  NameArray regions;
+
+  int type;     /* input type */
+  void  *data;  /* pointer to Type structure */
+
+  int time_index;
+} PhaseRelPermPublicXtra;
+
+typedef struct {
+  Grid   *grid;
+  double *temp_data;
+} PhaseRelPermInstanceXtra;
+
+typedef struct {
+  int num_regions;
+  int    *region_indices;
+  double *values;
+} PhaseRelPermType0;
+
+
+typedef struct {
+  double min_pressure_head;
+  int num_sample_points;
+
+  double *x;
+  double *a;
+  double *d;
+  double *a_der;
+  double *d_der;
+
+  /* used by linear interpolation method */
+  double *slope;
+  double *slope_der;
+
+  int interpolation_method;
+
+  double interval;
+} PhaseRelPermVanGTable;
+
+typedef struct {
+  int num_regions;
+  int    *region_indices;
+  int data_from_file;
+  double *alphas;
+  double *ns;
+  char   *alpha_file;
+  char   *n_file;
+  Vector *alpha_values;
+  Vector *n_values;
+
+  PhaseRelPermVanGTable **lookup_tables;
+
+} PhaseRelPermType1;                      /* Van Genuchten Rel. Perm. */
+
+typedef struct {
+  int num_regions;
+  int    *region_indices;
+  double *As;
+  double *gammas;
+} PhaseRelPermType2;                      /* Haverkamp, et.al. Rel. Perm. */
+
+typedef struct {
+  int num_regions;
+  int    *region_indices;
+} PhaseRelPermType3;                      /* Data points for Rel. Perm. */
+
+typedef struct {
+  int num_regions;
+  int    *region_indices;
+  int    *degrees;
+  double **coefficients;
+} PhaseRelPermType4;                      /* Polynomial Function for Rel. Perm. */
+
 #endif // _GET_MODULES_XTRA_H

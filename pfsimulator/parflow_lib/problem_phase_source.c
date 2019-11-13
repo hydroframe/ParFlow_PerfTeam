@@ -8,6 +8,7 @@
 *********************************************************************EHEADER*/
 
 #include "parflow.h"
+#include "get_modules_xtra.h"
 
 #include <float.h>
 
@@ -38,12 +39,15 @@ typedef struct {
 } Type1;                       /* Known forcing term on entire domain */
 
 
+GET_PUBLICXTRA_FUNC(PhaseSource);
+
+
 /*--------------------------------------------------------------------------
  * PhaseSource
  *--------------------------------------------------------------------------*/
 
 void         PhaseSource(
-                         Vector *     phase_source,
+                         Vector *     phase_source, // Test
                          int          phase,
                          Problem *    problem,
                          ProblemData *problem_data,
