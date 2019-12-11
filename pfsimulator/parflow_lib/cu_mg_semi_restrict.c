@@ -30,22 +30,25 @@
 * Operator induced restriction for MGSemi module
 *
 *****************************************************************************/
-
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
-#include "pf_parallel.h"
+
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
 
 /*--------------------------------------------------------------------------
  * MGSemiRestrict
  *--------------------------------------------------------------------------*/
 
-void             MGSemiRestrict(
+void             CU_MGSemiRestrict(
                                 Matrix *        A_f,
                                 Vector *        r_f,
                                 Vector *        r_c,
@@ -55,8 +58,6 @@ void             MGSemiRestrict(
                                 ComputePkg *    compute_pkg,
                                 CommPkg *       r_f_comm_pkg)
 {
-  CU_CALL(CU_MGSemiRestrict(A_f, r_f, r_c, P, f_sr_array, c_sr_array, compute_pkg, r_f_comm_pkg));
-
   SubregionArray *subregion_array;
 
   Subregion      *subregion;
@@ -168,14 +169,14 @@ void             MGSemiRestrict(
         i_p = 0;
         i_c = 0;
         i_f = 0;
-        _BoxLoopI3(NO_LOCALS,
-                   ii, jj, kk, ix, iy, iz, nx, ny, nz,
-                   i_p, nx_p, ny_p, nz_p, 1, 1, 1,
-                   i_c, nx_c, ny_c, nz_c, 1, 1, 1,
-                   i_f, nx_f, ny_f, nz_f, sx, sy, sz,
+        BoxLoopI3(ii, jj, kk, ix, iy, iz, nx, ny, nz,
+                  i_p, nx_p, ny_p, nz_p, 1, 1, 1,
+                  i_c, nx_c, ny_c, nz_c, 1, 1, 1,
+                  i_f, nx_f, ny_f, nz_f, sx, sy, sz,
         {
-          r_cp[i_c] = r_fp[i_f] + (p1[i_p] * r_fp[i_f - stride] +
-                                   p2[i_p] * r_fp[i_f + stride]);
+          r_cp[i_c] =
+            r_fp[i_f] + (p1[i_p] * r_fp[i_f - stride] +
+                         p2[i_p] * r_fp[i_f + stride]);
         });
       }
     }
@@ -193,7 +194,7 @@ void             MGSemiRestrict(
  * NewMGSemiRestrictComputePkg
  *--------------------------------------------------------------------------*/
 
-ComputePkg   *NewMGSemiRestrictComputePkg(
+ComputePkg   *CU_NewMGSemiRestrictComputePkg(
                                           Grid *   grid,
                                           Stencil *stencil,
                                           int      sx,
@@ -202,8 +203,6 @@ ComputePkg   *NewMGSemiRestrictComputePkg(
                                           int      c_index,
                                           int      f_index)
 {
-  CU_CALL(CU_NewMGSemiRestrictComputePkg(grid, stencil, sx, sy, sz, c_index, f_index));
-
   ComputePkg  *compute_pkg;
 
   Region      *send_reg;
@@ -228,6 +227,6 @@ ComputePkg   *NewMGSemiRestrictComputePkg(
   return compute_pkg;
 }
 
-#ifdef USING_PARALLEL
-} // Extern C
+#ifdef HAVE_CUDA
+}
 #endif

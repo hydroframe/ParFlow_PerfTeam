@@ -32,20 +32,24 @@
 
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
-#include "pf_parallel.h"
 
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
-double   InnerProd(
+/* This must be in the global scope due to __managed__ keyword */
+__managed__ static double result;
+
+double   CU_InnerProd(
                    Vector *x,
                    Vector *y)
 {
-  CU_CALL(CU_InnerProd(x, y));
-
   Grid         *grid = VectorGrid(x);
   Subgrid      *subgrid;
 
@@ -53,8 +57,6 @@ double   InnerProd(
   Subvector    *x_sub;
 
   double       *yp, *xp;
-
-  double result = 0.0;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -64,7 +66,7 @@ double   InnerProd(
 
   amps_Invoice result_invoice;
 
-
+  result = 0.0;
   result_invoice = amps_NewInvoice("%d", &result);
 
   ForSubgridI(i_s, GridSubgrids(grid))
@@ -90,11 +92,11 @@ double   InnerProd(
     xp = SubvectorElt(x_sub, ix, iy, iz);
 
     iv = 0;
-    BoxLoopReduceI1(result,
-                    i, j, k, ix, iy, iz, nx, ny, nz,
-                    iv, nx_v, ny_v, nz_v, 1, 1, 1,
+
+    BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
+              iv, nx_v, ny_v, nz_v, 1, 1, 1,
     {
-      result += yp[iv] * xp[iv];
+      PlusEquals(result, yp[iv] * xp[iv]);
     });
   }
 
@@ -107,6 +109,6 @@ double   InnerProd(
   return result;
 }
 
-#ifdef USING_PARALLEL
-} // Extern C
+#ifdef HAVE_CUDA
+}
 #endif

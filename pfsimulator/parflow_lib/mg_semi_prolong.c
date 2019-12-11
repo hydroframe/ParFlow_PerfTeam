@@ -55,6 +55,8 @@ void             MGSemiProlong(
                                ComputePkg *    compute_pkg,
                                CommPkg *       e_f_comm_pkg)
 {
+  CU_CALL(CU_MGSemiProlong(A_f, e_f, e_c, P, f_sr_array, c_sr_array, compute_pkg, e_f_comm_pkg));
+
   SubregionArray *subregion_array;
 
   Subregion      *subregion;
@@ -231,6 +233,7 @@ ComputePkg   *NewMGSemiProlongComputePkg(
                                          int      c_index,
                                          int      f_index)
 {
+  CU_CALL(CU_NewMGSemiProlongComputePkg(grid, stencil, sx, sy, sz, c_index, f_index));
   ComputePkg  *compute_pkg;
 
   Region      *send_reg;

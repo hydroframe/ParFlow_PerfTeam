@@ -43,6 +43,8 @@ void     Axpy(
               Vector *x,
               Vector *y)
 {
+  CU_CALL(CU_Axpy(alpha, x, y));
+
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 

@@ -30,16 +30,18 @@
 * Pointwise red/black Gauss-Seidel
 *
 *****************************************************************************/
-
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
-#include "pf_parallel.h"
 
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
 /*--------------------------------------------------------------------------
  * Structures
@@ -61,13 +63,13 @@ typedef struct {
  * RedBlackGSPoint:
  *--------------------------------------------------------------------------*/
 
-void     RedBlackGSPoint(
+void     CU_RedBlackGSPoint(
                          Vector *x,
                          Vector *b,
                          double  tol,
                          int     zero)
 {
-  CU_CALL(CU_RedBlackGSPoint(x, b, tol, zero));
+  PUSH_RANGE("RedBlackGSPoint",5)
 
   PFModule       *this_module = ThisPFModule;
   PublicXtra     *public_xtra = (PublicXtra*)PFModulePublicXtra(this_module);
@@ -214,10 +216,9 @@ void     RedBlackGSPoint(
           bp = SubvectorElt(b_sub, ix, iy, iz);
 
           iv = im = 0;
-          _BoxLoopI2(NO_LOCALS,
-                     i, j, k, ix, iy, iz, nx, ny, nz,
-                     iv, nx_v, ny_v, nz_v, sx, sy, sz,
-                     im, nx_m, ny_m, nz_m, sx, sy, sz,
+          BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
+                    iv, nx_v, ny_v, nz_v, sx, sy, sz,
+                    im, nx_m, ny_m, nz_m, sx, sy, sz,
           {
             x0[iv] = bp[iv] / a0[im];
           });
@@ -343,10 +344,9 @@ void     RedBlackGSPoint(
           bp = SubvectorElt(b_sub, ix, iy, iz);
 
           iv = im = 0;
-          _BoxLoopI2(NO_LOCALS,
-                     i, j, k, ix, iy, iz, nx, ny, nz,
-                     iv, nx_v, ny_v, nz_v, sx, sy, sz,
-                     im, nx_m, ny_m, nz_m, sx, sy, sz,
+          BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
+                    iv, nx_v, ny_v, nz_v, sx, sy, sz,
+                    im, nx_m, ny_m, nz_m, sx, sy, sz,
           {
             x0[iv] = (bp[iv] - (a1[im] * x1[iv] +
                                 a2[im] * x2[iv] +
@@ -370,6 +370,8 @@ void     RedBlackGSPoint(
     IncFLOPCount(13 * (iter * VectorSize(x) + (VectorSize(x) / 2)));
   else
     IncFLOPCount(13 * (iter * VectorSize(x)));
+
+    POP_RANGE
 }
 
 
@@ -377,15 +379,13 @@ void     RedBlackGSPoint(
  * RedBlackGSPointInitInstanceXtra
  *--------------------------------------------------------------------------*/
 
-PFModule     *RedBlackGSPointInitInstanceXtra(
+PFModule     *CU_RedBlackGSPointInitInstanceXtra(
                                               Problem *    problem,
                                               Grid *       grid,
                                               ProblemData *problem_data,
                                               Matrix *     A,
                                               double *     temp_data)
 {
-  CU_CALL(CU_RedBlackGSPointInitInstanceXtra(problem, grid, problem_data, A, temp_data));
-
   PFModule      *this_module = ThisPFModule;
   InstanceXtra  *instance_xtra;
 
@@ -415,10 +415,8 @@ PFModule     *RedBlackGSPointInitInstanceXtra(
  * RedBlackGSPointFreeInstanceXtra
  *--------------------------------------------------------------------------*/
 
-void   RedBlackGSPointFreeInstanceXtra()
+void   CU_RedBlackGSPointFreeInstanceXtra()
 {
-  CU_CALL(CU_RedBlackGSPointFreeInstanceXtra());
-
   PFModule      *this_module = ThisPFModule;
   InstanceXtra  *instance_xtra = (InstanceXtra*)PFModuleInstanceXtra(this_module);
 
@@ -434,10 +432,8 @@ void   RedBlackGSPointFreeInstanceXtra()
  * RedBlackGSPointNewPublicXtra
  *--------------------------------------------------------------------------*/
 
-PFModule   *RedBlackGSPointNewPublicXtra(char *name)
+PFModule   *CU_RedBlackGSPointNewPublicXtra(char *name)
 {
-  CU_CALL(CU_RedBlackGSPointNewPublicXtra(name));
-
   PFModule      *this_module = ThisPFModule;
   PublicXtra    *public_xtra;
 
@@ -494,10 +490,8 @@ PFModule   *RedBlackGSPointNewPublicXtra(char *name)
  * RedBlackGSPointFreePublicXtra
  *--------------------------------------------------------------------------*/
 
-void   RedBlackGSPointFreePublicXtra()
+void   CU_RedBlackGSPointFreePublicXtra()
 {
-  CU_CALL(CU_RedBlackGSPointFreePublicXtra());
-
   PFModule    *this_module = ThisPFModule;
   PublicXtra  *public_xtra = (PublicXtra*)PFModulePublicXtra(this_module);
 
@@ -509,15 +503,6 @@ void   RedBlackGSPointFreePublicXtra()
 }
 
 
-/*--------------------------------------------------------------------------
- * RedBlackGSPointSizeOfTempData
- *--------------------------------------------------------------------------*/
-
-int  RedBlackGSPointSizeOfTempData()
-{
-  return 0;
+#ifdef HAVE_CUDA
 }
-
-#ifdef USING_PARALLEL
-} // Extern C
 #endif

@@ -32,12 +32,16 @@
 *****************************************************************************/
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
-#include "pf_parallel.h"
+
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
 /*--------------------------------------------------------------------------
  * Structures
@@ -96,13 +100,13 @@ typedef struct {
  *
  *--------------------------------------------------------------------------*/
 
-void     MGSemi(
+  void     CU_MGSemi(
                 Vector *x,
                 Vector *b,
                 double  tol,
                 int     zero)
 {
-  CU_CALL(CU_MGSemi(x, b, tol, zero));
+  PUSH_RANGE("MGSemi",2)
 
   PFModule      *this_module = ThisPFModule;
   PublicXtra    *public_xtra = (PublicXtra*)PFModulePublicXtra(this_module);
@@ -166,6 +170,8 @@ void     MGSemi(
   /*-----------------------------------------------------------------------
    * Allocate temp vectors
    *-----------------------------------------------------------------------*/
+  PUSH_RANGE("MGSemi_mallocloop",3)
+
   x_l = talloc(Vector *, num_levels);
   b_l = talloc(Vector *, num_levels);
   temp_vec_l = talloc(Vector *, num_levels);
@@ -194,6 +200,7 @@ void     MGSemi(
       NewVectorCommPkg(temp_vec_l[l],
                        (instance_xtra->prolong_compute_pkg_l[l]));
   }
+  POP_RANGE
 
   /*-----------------------------------------------------------------------
    * Do V-cycles:
@@ -217,6 +224,7 @@ void     MGSemi(
   /* smooth (use `zero' to determine initial x) */
   PFModuleInvokeType(LinearSolverInvoke, smooth_l[0], (x, b, 0.0, zero));
 
+  PUSH_RANGE("MGSemi_solveloop",4)
   while (++i)
   {
     /*--------------------------------------------------------------------
@@ -364,6 +372,7 @@ void     MGSemi(
     /* smooth (non-zero initial x) */
     PFModuleInvokeType(LinearSolverInvoke, smooth_l[0], (x, b, 0.0, 0));
   }
+  POP_RANGE
 
   if (tol > 0.0)
   {
@@ -429,6 +438,7 @@ void     MGSemi(
       tfree(rel_norm_log);
     }
   }
+  POP_RANGE
 }
 
 
@@ -436,15 +446,13 @@ void     MGSemi(
  * SetupCoarseOps
  *--------------------------------------------------------------------------*/
 
-void              SetupCoarseOps(
+  void              CU_SetupCoarseOps(
                                  Matrix **        A_l,
                                  Matrix **        P_l,
                                  int              num_levels,
                                  SubregionArray **f_sra_l,
                                  SubregionArray **c_sra_l)
 {
-  CU_CALL(CU_SetupCoarseOps(A_l, P_l, num_levels, f_sra_l, c_sra_l));
-
   SubregionArray *subregion_array;
 
   Subregion      *subregion;
@@ -456,7 +464,6 @@ void              SetupCoarseOps(
   double               *p1, *p2;
   double         *a0, *a1, *a2, *a3, *a4, *a5, *a6;
   double         *ac0, *ac1, *ac2, *ac3, *ac4, *ac5, *ac6;
-  double ap0;
 
   Stencil        *P_stencil, *A_stencil;
   StencilElt     *P_ss, *A_ss;
@@ -472,8 +479,8 @@ void              SetupCoarseOps(
   int ix, iy, iz;
   int sx, sy, sz;
 
-  int iP, iP1, iP2, dP12 = 0;
-  int iA, iA1, iA2, dA12 = 0;
+  int iP, iP1, dP12 = 0;
+  int iA, dA12 = 0;
   int iAc;
 
   int l, i, j, k;
@@ -565,7 +572,7 @@ void              SetupCoarseOps(
                   iP, nx_P, ny_P, nz_P, 1, 1, 1,
                   iA, nx_A, ny_A, nz_A, sx, sy, sz,
         {
-          ap0 = a0[iA] + a3[iA] + a4[iA] + a5[iA] + a6[iA];
+          double ap0 = a0[iA] + a3[iA] + a4[iA] + a5[iA] + a6[iA];
 
           if (ap0)
           {
@@ -675,9 +682,9 @@ void              SetupCoarseOps(
                   iA, nx_A, ny_A, nz_A, sx, sy, sz,
                   iAc, nx_Ac, ny_Ac, nz_Ac, 1, 1, 1,
         {
-          iP2 = iP1 + dP12;
-          iA1 = iA - dA12;
-          iA2 = iA + dA12;
+          int iP2 = iP1 + dP12;
+          int iA1 = iA - dA12;
+          int iA2 = iA + dA12;
 
           ac3[iAc] = a3[iA] + 0.5 * a3[iA1] + 0.5 * a3[iA2];
           ac4[iAc] = a4[iA] + 0.5 * a4[iA1] + 0.5 * a4[iA2];
@@ -770,15 +777,13 @@ void              SetupCoarseOps(
  * MGSemiInitInstanceXtra
  *--------------------------------------------------------------------------*/
 
-PFModule     *MGSemiInitInstanceXtra(
+PFModule     *CU_MGSemiInitInstanceXtra(
                                      Problem *    problem,
                                      Grid *       grid,
                                      ProblemData *problem_data,
                                      Matrix *     A,
                                      double *     temp_data)
 {
-  CU_CALL(CU_MGSemiInitInstanceXtra(problem, grid, problem_data, A, temp_data));
-
   PFModule      *this_module = ThisPFModule;
   PublicXtra    *public_xtra = (PublicXtra*)PFModulePublicXtra(this_module);
   InstanceXtra  *instance_xtra;
@@ -1182,10 +1187,8 @@ PFModule     *MGSemiInitInstanceXtra(
  * MGSemiFreeInstanceXtra
  *--------------------------------------------------------------------------*/
 
-void   MGSemiFreeInstanceXtra()
+void   CU_MGSemiFreeInstanceXtra()
 {
-  CU_CALL(CU_MGSemiFreeInstanceXtra());
-
   PFModule      *this_module = ThisPFModule;
   InstanceXtra  *instance_xtra = (InstanceXtra*)PFModuleInstanceXtra(this_module);
 
@@ -1242,10 +1245,8 @@ void   MGSemiFreeInstanceXtra()
  * MGSemiNewPublicXtra
  *--------------------------------------------------------------------------*/
 
-PFModule   *MGSemiNewPublicXtra(char *name)
+PFModule   *CU_MGSemiNewPublicXtra(char *name)
 {
-  CU_CALL(CU_MGSemiNewPublicXtra(name));
-
   PFModule      *this_module = ThisPFModule;
   PublicXtra    *public_xtra;
 
@@ -1344,10 +1345,8 @@ PFModule   *MGSemiNewPublicXtra(char *name)
  * MGSemiFreePublicXtra
  *--------------------------------------------------------------------------*/
 
-void   MGSemiFreePublicXtra()
+void   CU_MGSemiFreePublicXtra()
 {
-  CU_CALL(CU_MGSemiFreePublicXtra());
-
   PFModule    *this_module = ThisPFModule;
   PublicXtra  *public_xtra = (PublicXtra*)PFModulePublicXtra(this_module);
 
@@ -1364,10 +1363,8 @@ void   MGSemiFreePublicXtra()
  * MGSemiSizeOfTempData
  *--------------------------------------------------------------------------*/
 
-int  MGSemiSizeOfTempData()
+int  CU_MGSemiSizeOfTempData()
 {
-  CU_CALL(CU_MGSemiSizeOfTempData());
-
   PFModule      *this_module = ThisPFModule;
   InstanceXtra  *instance_xtra = (InstanceXtra*)PFModuleInstanceXtra(this_module);
 
@@ -1385,6 +1382,6 @@ int  MGSemiSizeOfTempData()
   return sz;
 }
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 }
 #endif

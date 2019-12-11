@@ -30,16 +30,19 @@
 * Constructors and destructors for matrix structure.
 *
 *****************************************************************************/
-
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
 #include "matrix.h"
-#include "pf_parallel.h"
+
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
 #ifdef HAVE_SAMRAI
 #include "SAMRAI/hier/PatchDescriptor.h"
@@ -57,12 +60,10 @@ static int samrai_matrix_ids[4][2048];
  * NewStencil
  *--------------------------------------------------------------------------*/
 
-Stencil  *NewStencil(
+Stencil  *CU_NewStencil(
                      int shape[][3],
                      int sz)
 {
-  CU_CALL(CU_NewStencil(shape, sz));
-
   Stencil     *new_stencil;
   StencilElt  *new_shape;
 
@@ -87,12 +88,10 @@ Stencil  *NewStencil(
  *   RDF hack
  *--------------------------------------------------------------------------*/
 
-CommPkg   *NewMatrixUpdatePkg(
+  CommPkg   *CU_NewMatrixUpdatePkg(
                               Matrix * matrix,
                               Stencil *ghost)
 {
-  CU_CALL(CU_NewMatrixUpdatePkg(matrix, ghost));
-
   CommPkg     *new_commpkg = NULL;
 
   Grid* grid = MatrixGrid(matrix);
@@ -138,10 +137,9 @@ CommPkg   *NewMatrixUpdatePkg(
  * InitMatrixUpdate
  *--------------------------------------------------------------------------*/
 
-CommHandle  *InitMatrixUpdate(
+  CommHandle  *CU_InitMatrixUpdate(
                               Matrix *matrix)
 {
-  CU_CALL(CU_InitMatrixUpdate(matrix));
   CommHandle *return_handle = NULL;
 
   enum ParflowGridType grid_type = invalid_grid_type;
@@ -206,10 +204,9 @@ CommHandle  *InitMatrixUpdate(
  * FinalizeMatrixUpdate
  *--------------------------------------------------------------------------*/
 
-void         FinalizeMatrixUpdate(
+void         CU_FinalizeMatrixUpdate(
                                   CommHandle *handle)
 {
-  CU_CALL(CU_FinalizeMatrixUpdate(handle));
   if (handle)
   {
     FinalizeCommunication(handle);
@@ -221,17 +218,7 @@ void         FinalizeMatrixUpdate(
  * NewMatrix
  *--------------------------------------------------------------------------*/
 
-Matrix          *NewMatrix(
-                           Grid *          grid,
-                           SubregionArray *range,
-                           Stencil *       stencil,
-                           int             symmetry,
-                           Stencil *       ghost)
-{
-  return NewMatrixType(grid, range, stencil, symmetry, ghost, matrix_non_samrai);
-}
-
-Matrix          *NewMatrixType(
+Matrix          *CU_NewMatrixType(
                                Grid *           grid,
                                SubregionArray * range,
                                Stencil *        stencil,
@@ -239,7 +226,6 @@ Matrix          *NewMatrixType(
                                Stencil *        ghost,
                                enum matrix_type type)
 {
-  CU_CALL(CU_NewMatrixType(grid, range, stencil, symmetry, ghost, type));
   Matrix         *new_matrix;
   Submatrix      *new_sub;
 
@@ -641,10 +627,9 @@ Matrix          *NewMatrixType(
  * FreeStencil
  *--------------------------------------------------------------------------*/
 
-void      FreeStencil(
+void      CU_FreeStencil(
                       Stencil *stencil)
 {
-  CU_CALL(CU_FreeStencil(stencil));
   if (stencil)
   {
     tfree(StencilShape(stencil));
@@ -656,11 +641,9 @@ void      FreeStencil(
  * FreeMatrix
  *--------------------------------------------------------------------------*/
 
-void FreeMatrix(
+void CU_FreeMatrix(
                 Matrix *matrix)
 {
-  CU_CALL(CU_FreeMatrix(matrix));
-
   Submatrix  *submatrix;
 
   int i;
@@ -730,12 +713,10 @@ void FreeMatrix(
  * InitMatrix
  *--------------------------------------------------------------------------*/
 
-void    InitMatrix(
+void    CU_InitMatrix(
                    Matrix *A,
                    double  value)
 {
-  CU_CALL(CU_InitMatrix(A, value));
-
   Grid       *grid = MatrixGrid(A);
 
   Submatrix  *A_sub;
@@ -790,6 +771,6 @@ void    InitMatrix(
   }
 }
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 }
 #endif

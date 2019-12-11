@@ -49,14 +49,26 @@
 *****************************************************************************/
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
-#include "problem_phase_density.h"
-#include "pf_parallel.h"
 
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+
+/* The cross-compilation-unit function call to PhaseDensity in
+  richards_jacobian_eval.c:1110 is problematic for the GPU kernel
+      -> the following structures are defined in the pfcudamalloc.h          */
+
+typedef PublicXtraPhaseDensity PublicXtra;
+typedef void InstanceXtra;
+typedef Type0PhaseDensity Type0;
+typedef Type1PhaseDensity Type1;
+
+#else
 /*--------------------------------------------------------------------------
  * Structures
  *--------------------------------------------------------------------------*/
@@ -78,50 +90,13 @@ typedef struct {
   double reference_density;
   double compressibility_constant;
 } Type1;                      /* rho_ref exp(compressibility*pressure) */
-
-
-/*-------------------------------------------------------------------------
- * PhaseDensityConstants
- * Used to get the constant values for when density vector is always NULL
- *-------------------------------------------------------------------------*/
-
-void    PhaseDensityConstants(int phase,
-                              int fcn,
-                              int *phase_type,
-                              double *constant,
-                              double *ref_den,
-                              double *comp_const)
-{
-  PFModule *this_module = ThisPFModule;
-  PublicXtra *public_xtra = (PublicXtra*)PFModulePublicXtra(this_module);
-  Type0 *dummy0;
-  Type1 *dummy1;
-
-  (*phase_type) = public_xtra->type[phase];
-  switch(*phase_type)
-  {
-    case 0:
-      if (fcn == CALCFCN) {
-        dummy0 = (Type0*)(public_xtra->data[phase]);
-        (*constant) = dummy0->constant;
-      } else {
-        (*constant) = 0.0;
-      }
-      break;
-
-    case 1:
-      dummy1 = (Type1*)(public_xtra->data[phase]);
-      (*ref_den) = dummy1->reference_density;
-      (*comp_const) = dummy1->compressibility_constant;
-      break;
-  }
-}
+#endif
 
 /*-------------------------------------------------------------------------
  * PhaseDensity
  *-------------------------------------------------------------------------*/
 
-void    PhaseDensity(
+void    CU_PhaseDensity(
                      int     phase, /* Phase */
                      Vector *phase_pressure, /* Vector of phase pressures at each block */
                      Vector *density_v, /* Vector of return densities at each block */
@@ -139,8 +114,6 @@ void    PhaseDensity(
  *  the Impes modules.
  */
 {
-  CU_CALL(CU_PhaseDensity(phase, phase_pressure, density_v, pressure_d, density_d, fcn));
-
   PFModule      *this_module = ThisPFModule;
   PublicXtra    *public_xtra = (PublicXtra*)PFModulePublicXtra(this_module);
 
@@ -311,10 +284,8 @@ void    PhaseDensity(
  * PhaseDensityInitInstanceXtra
  *--------------------------------------------------------------------------*/
 
-PFModule  *PhaseDensityInitInstanceXtra()
+PFModule  *CU_PhaseDensityInitInstanceXtra()
 {
-  CU_CALL(CU_PhaseDensityInitInstanceXtra());
-
   PFModule      *this_module = ThisPFModule;
   InstanceXtra  *instance_xtra;
 
@@ -335,10 +306,8 @@ PFModule  *PhaseDensityInitInstanceXtra()
  * PhaseDensityFreeInstanceXtra
  *--------------------------------------------------------------------------*/
 
-void  PhaseDensityFreeInstanceXtra()
+void  CU_PhaseDensityFreeInstanceXtra()
 {
-  CU_CALL(CU_PhaseDensityFreeInstanceXtra());
-
   PFModule      *this_module = ThisPFModule;
   InstanceXtra  *instance_xtra = (InstanceXtra*)PFModuleInstanceXtra(this_module);
 
@@ -353,11 +322,9 @@ void  PhaseDensityFreeInstanceXtra()
  * PhaseDensityNewPublicXtra
  *--------------------------------------------------------------------------*/
 
-PFModule  *PhaseDensityNewPublicXtra(
+PFModule  *CU_PhaseDensityNewPublicXtra(
                                      int num_phases)
 {
-  CU_CALL(CU_PhaseDensityNewPublicXtra(num_phases));
-
   PFModule      *this_module = ThisPFModule;
   PublicXtra    *public_xtra;
 
@@ -441,10 +408,8 @@ PFModule  *PhaseDensityNewPublicXtra(
  * PhaseDensityFreePublicXtra
  *-------------------------------------------------------------------------*/
 
-void  PhaseDensityFreePublicXtra()
+void  CU_PhaseDensityFreePublicXtra()
 {
-  CU_CALL(CU_PhaseDensityFreePublicXtra());
-
   PFModule    *this_module = ThisPFModule;
   PublicXtra  *public_xtra = (PublicXtra*)PFModulePublicXtra(this_module);
 
@@ -478,15 +443,6 @@ void  PhaseDensityFreePublicXtra()
   }
 }
 
-/*--------------------------------------------------------------------------
- * PhaseDensitySizeOfTempData
- *--------------------------------------------------------------------------*/
-
-int  PhaseDensitySizeOfTempData()
-{
-  return 0;
-}
-
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 }
 #endif

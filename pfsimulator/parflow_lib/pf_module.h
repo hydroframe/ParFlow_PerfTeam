@@ -61,7 +61,13 @@ amps_ThreadLocalDcl(PFModule  *, global_ptr_this_pf_module);
 amps_ThreadLocalDcl(extern PFModule *, global_ptr_this_pf_module);
 #endif
 
-#define global_this_pf_module amps_ThreadLocal(global_ptr_this_pf_module)
+#if defined(HAVE_CUDA) && defined(__CUDACC__)
+#ifdef PARFLOW_GLOBALS
+__device__ PFModule *dev_global_ptr_this_pf_module;
+#else
+extern __device__ PFModule *dev_global_ptr_this_pf_module;
+#endif
+#endif
 
 /*--------------------------------------------------------------------------
  * Accessor macros
@@ -70,7 +76,17 @@ amps_ThreadLocalDcl(extern PFModule *, global_ptr_this_pf_module);
 #define PFModuleInstanceXtra(pf_module)      (pf_module->instance_xtra)
 #define PFModulePublicXtra(pf_module)        (pf_module->public_xtra)
 
+#ifdef __CUDA_ARCH__
+
+#define dev_global_this_pf_module amps_ThreadLocal(dev_global_ptr_this_pf_module)
+#define ThisPFModule dev_global_this_pf_module
+
+#else
+
+#define global_this_pf_module amps_ThreadLocal(global_ptr_this_pf_module)
 #define ThisPFModule  global_this_pf_module
+
+#endif
 
 /*--------------------------------------------------------------------------
  * PFModule interface macros

@@ -33,13 +33,17 @@
 *****************************************************************************/
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
 #include "vector.h"
-#include "pf_parallel.h"
+
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
 #ifdef HAVE_SAMRAI
 #include "SAMRAI/hier/PatchDescriptor.h"
@@ -51,6 +55,7 @@ using namespace SAMRAI;
 #endif
 
 #include <stdlib.h>
+#include <string.h>
 
 static int samrai_vector_ids[5][2048];
 
@@ -58,12 +63,10 @@ static int samrai_vector_ids[5][2048];
  * NewVectorCommPkg:
  *--------------------------------------------------------------------------*/
 
-CommPkg  *NewVectorCommPkg(
+CommPkg  *CU_NewVectorCommPkg(
                            Vector *    vector,
                            ComputePkg *compute_pkg)
 {
-  CU_CALL(CU_NewVectorCommPkg(vector, compute_pkg));
-
   CommPkg     *new_commpkg;
 
 
@@ -87,12 +90,10 @@ CommPkg  *NewVectorCommPkg(
  * InitVectorUpdate
  *--------------------------------------------------------------------------*/
 
-VectorUpdateCommHandle  *InitVectorUpdate(
+  VectorUpdateCommHandle  *CU_InitVectorUpdate(
                                           Vector *vector,
                                           int     update_mode)
 {
-  CU_CALL(CU_InitVectorUpdate(vector, update_mode));
-
   enum ParflowGridType grid_type = invalid_grid_type;
 
 #ifdef HAVE_SAMRAI
@@ -179,7 +180,8 @@ VectorUpdateCommHandle  *InitVectorUpdate(
 #endif
   }
 
-  VectorUpdateCommHandle *vector_update_comm_handle = ctalloc(VectorUpdateCommHandle, 1);
+  VectorUpdateCommHandle *vector_update_comm_handle = talloc(VectorUpdateCommHandle, 1);
+  memset(vector_update_comm_handle, 0, sizeof(VectorUpdateCommHandle));
   vector_update_comm_handle->vector = vector;
   vector_update_comm_handle->comm_handle = amps_com_handle;
 
@@ -192,11 +194,9 @@ VectorUpdateCommHandle  *InitVectorUpdate(
  * FinalizeVectorUpdate
  *--------------------------------------------------------------------------*/
 
-void         FinalizeVectorUpdate(
+void         CU_FinalizeVectorUpdate(
                                   VectorUpdateCommHandle *handle)
 {
-  CU_CALL(CU_FinalizeVectorUpdate(handle));
-
   switch (handle->vector->type)
   {
     case vector_cell_centered:
@@ -249,18 +249,21 @@ static Vector  *NewTempVector(
 
   (void)nc;
 
-  new_vector = ctalloc(Vector, 1);  /*address of storage is assigned to the ptr "new_" of type Vector, which is also
-                                     *                      the return value of this function */
+  new_vector = talloc(Vector, 1);        /* address of storage is assigned to the ptr "new_" of type Vector,
+                                          *   which is also the return value of this function                */
+  memset(new_vector, 0, sizeof(Vector));
 
-  (new_vector->subvectors) = ctalloc(Subvector *, GridNumSubgrids(grid));    /* 1st arg.: variable type;
-                                                                              *                                                               2nd arg.: # of elements to be allocated*/
+  (new_vector->subvectors) = talloc(Subvector *, GridNumSubgrids(grid));    /* 1st arg.: variable type;
+                                                                              * 2nd arg.: # of elements to be allocated*/
+  memset(new_vector->subvectors, 0, GridNumSubgrids(grid) * sizeof(Subvector *));
 
   data_size = 0;
 
   VectorDataSpace(new_vector) = NewSubgridArray();
   ForSubgridI(i, GridSubgrids(grid))
   {
-    new_sub = ctalloc(Subvector, 1);
+    new_sub = talloc(Subvector, 1);
+    memset(new_sub, 0, sizeof(Subvector));
 
     subgrid = GridSubgrid(grid, i);
 
@@ -343,14 +346,12 @@ static void     AllocateVectorData(
  * NewVector
  *--------------------------------------------------------------------------*/
 
-Vector  *NewVectorType(
+Vector  *CU_NewVectorType(
                        Grid *           grid,
                        int              nc,
                        int              num_ghost,
                        enum vector_type type)
 {
-  CU_CALL(CU_NewVectorType(grid, nc, num_ghost, type));
-
   Vector  *new_vector;
 
   new_vector = NewTempVector(grid, nc, num_ghost);
@@ -623,31 +624,12 @@ Vector  *NewVectorType(
   return new_vector;
 }
 
-Vector  *NewVector(
-                   Grid *grid,
-                   int   nc,
-                   int   num_ghost)
-{
-  return NewVectorType(grid, nc, num_ghost, vector_non_samrai);
-}
-
-
-Vector  *NewNoCommunicationVector(
-                                  Grid *grid,
-                                  int   nc,
-                                  int   num_ghost)
-{
-  return NewVectorType(grid, nc, num_ghost, vector_non_samrai);
-}
-
 /*--------------------------------------------------------------------------
  * FreeTempVector
  *--------------------------------------------------------------------------*/
 
-void FreeSubvector(Subvector *subvector)
+void CU_FreeSubvector(Subvector *subvector)
 {
-  CU_CALL(CU_FreeSubvector(subvector));
-
   if (subvector->allocated)
   {
     tfree(SubvectorData(subvector));
@@ -655,11 +637,11 @@ void FreeSubvector(Subvector *subvector)
   tfree(subvector);
 }
 
-void FreeTempVector(Vector *vector)
+void CU_FreeTempVector(Vector *vector)
 {
-  CU_CALL(CU_FreeTempVector(vector));
-
   int i;
+
+
   for (i = 0; i < NumUpdateModes; i++)
     FreeCommPkg(VectorCommPkg(vector, i));
 
@@ -679,11 +661,9 @@ void FreeTempVector(Vector *vector)
  * FreeVector
  *--------------------------------------------------------------------------*/
 
-void     FreeVector(
+void     CU_FreeVector(
                     Vector *vector)
 {
-  CU_CALL(CU_FreeVector(vector));
-
   switch (vector->type)
   {
 #ifdef HAVE_SAMRAI
@@ -738,12 +718,10 @@ void     FreeVector(
  * InitVector
  *--------------------------------------------------------------------------*/
 
-void    InitVector(
+void    CU_InitVector(
                    Vector *v,
                    double  value)
 {
-  CU_CALL(CU_InitVector(v, value));
-
   Grid       *grid = VectorGrid(v);
 
   Subvector  *v_sub;
@@ -792,12 +770,10 @@ void    InitVector(
  * InitVectorAll
  *--------------------------------------------------------------------------*/
 
-void    InitVectorAll(
+void    CU_InitVectorAll(
                       Vector *v,
                       double  value)
 {
-  CU_CALL(CU_InitVectorAll(v, value));
-
   Grid       *grid = VectorGrid(v);
 
   Subvector  *v_sub;
@@ -847,13 +823,11 @@ void    InitVectorAll(
  *--------------------------------------------------------------------------*/
 
 
-void    InitVectorInc(
+void    CU_InitVectorInc(
                       Vector *v,
                       double  value,
                       double  inc)
 {
-  CU_CALL(CU_InitVectorInc(v, value, inc));
-
   Grid       *grid = VectorGrid(v);
 
   Subvector  *v_sub;
@@ -904,12 +878,10 @@ void    InitVectorInc(
  * InitVectorRandom
  *--------------------------------------------------------------------------*/
 
-void    InitVectorRandom(
+void    CU_InitVectorRandom(
                          Vector *v,
                          long    seed)
 {
-  CU_CALL(CU_InitVectorRandom(v, seed));
-
   Grid       *grid = VectorGrid(v);
 
   Subvector  *v_sub;
@@ -950,11 +922,15 @@ void    InitVectorRandom(
     BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
               iv, nx_v, ny_v, nz_v, 1, 1, 1,
     {
+#ifdef HAVE_CUDA
+      vp[iv] = dev_drand48();
+#else
       vp[iv] = drand48();
+#endif
     });
   }
 }
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 }
 #endif

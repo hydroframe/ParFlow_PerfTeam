@@ -102,7 +102,20 @@ amps_ThreadLocalDcl(extern Globals  *, globals_ptr);
 amps_ThreadLocalDcl(extern IDB *, input_database);
 #endif
 
+#if defined(HAVE_CUDA) && defined(__CUDACC__)
+#ifdef PARFLOW_GLOBALS
+__constant__ Globals *dev_globals_ptr;
+#else
+extern __constant__ Globals *dev_globals_ptr;
+#endif
+#endif
+
+#ifdef __CUDA_ARCH__
+#define globals amps_ThreadLocal(dev_globals_ptr)
+#else
 #define globals amps_ThreadLocal(globals_ptr)
+#endif
+
 
 
 /*--------------------------------------------------------------------------

@@ -30,31 +30,30 @@
 * Matrix-vector multply routine.
 *
 *****************************************************************************/
-
-
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
-#include "pf_parallel.h"
 
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
 /*--------------------------------------------------------------------------
  * Matvec
  *--------------------------------------------------------------------------*/
 
-void            Matvec(
+void            CU_Matvec(
                        double  alpha,
                        Matrix *A,
                        Vector *x,
                        double  beta,
                        Vector *y)
 {
-  CU_CALL(CU_Matvec(alpha, A, x, beta, y));
-
   VectorUpdateCommHandle *handle = NULL;
 
   Grid           *grid = MatrixGrid(A);
@@ -132,10 +131,9 @@ void            Matvec(
         yp = SubvectorElt(y_sub, ix, iy, iz);
 
         vi = 0;
-        _BoxLoopI1(NO_LOCALS,
-                   i, j, k,
-                   ix, iy, iz, nx, ny, nz,
-                   vi, nx_v, ny_v, nz_v, 1, 1, 1,
+        BoxLoopI1(i, j, k,
+                  ix, iy, iz, nx, ny, nz,
+                  vi, nx_v, ny_v, nz_v, 1, 1, 1,
         {
           yp[vi] *= beta;
         });
@@ -208,23 +206,21 @@ void            Matvec(
               vi = 0;
               if (temp == 0.0)
               {
-                _BoxLoopI1(NO_LOCALS,
-                           i, j, k,
-                           ix, iy, iz, nx, ny, nz,
-                           vi, nx_v, ny_v, nz_v, 1, 1, 1,
-                {
-                  yp[vi] = 0.0;
-                });
+                BoxLoopI1(i, j, k,
+                          ix, iy, iz, nx, ny, nz,
+                          vi, nx_v, ny_v, nz_v, 1, 1, 1,
+              {
+                yp[vi] = 0.0;
+              });
               }
               else
               {
-                _BoxLoopI1(NO_LOCALS,
-                           i, j, k,
-                           ix, iy, iz, nx, ny, nz,
-                           vi, nx_v, ny_v, nz_v, 1, 1, 1,
-                {
-                  yp[vi] *= temp;
-                });
+                BoxLoopI1(i, j, k,
+                          ix, iy, iz, nx, ny, nz,
+                          vi, nx_v, ny_v, nz_v, 1, 1, 1,
+              {
+                yp[vi] *= temp;
+              });
               }
             }
           }
@@ -306,11 +302,10 @@ void            Matvec(
           ap = SubmatrixElt(A_sub, si, ix, iy, iz);
 
           vi = 0; mi = 0;
-          _BoxLoopI2(NO_LOCALS,
-                     i, j, k,
-                     ix, iy, iz, nx, ny, nz,
-                     vi, nx_v, ny_v, nz_v, sx, sy, sz,
-                     mi, nx_m, ny_m, nz_m, 1, 1, 1,
+          BoxLoopI2(i, j, k,
+                    ix, iy, iz, nx, ny, nz,
+                    vi, nx_v, ny_v, nz_v, sx, sy, sz,
+                    mi, nx_m, ny_m, nz_m, 1, 1, 1,
           {
             yp[vi] += ap[mi] * xp[vi];
           });
@@ -321,10 +316,9 @@ void            Matvec(
           yp = SubvectorElt(y_sub, ix, iy, iz);
 
           vi = 0;
-          _BoxLoopI1(NO_LOCALS,
-                     i, j, k,
-                     ix, iy, iz, nx, ny, nz,
-                     vi, nx_v, ny_v, nz_v, 1, 1, 1,
+          BoxLoopI1(i, j, k,
+                    ix, iy, iz, nx, ny, nz,
+                    vi, nx_v, ny_v, nz_v, 1, 1, 1,
           {
             yp[vi] *= alpha;
           });
@@ -350,7 +344,7 @@ void            Matvec(
  * MatvecSubMat - A matvec operation involving the submatrices JA, JC, JE, JF
  *--------------------------------------------------------------------------*/
 
-void            MatvecSubMat(
+  void            CU_MatvecSubMat(
                              void *  current_state,
                              double  alpha,
                              Matrix *JB,
@@ -360,8 +354,6 @@ void            MatvecSubMat(
                              Vector *y
                              )
 {
-  CU_CALL(CU_MatvecSubMat(current_state, alpha, JB, JC, x, beta, y));
-
   ProblemData *problem_data = StateProblemData(((State*)current_state));
 
   VectorUpdateCommHandle *handle = NULL;
@@ -390,9 +382,6 @@ void            MatvecSubMat(
 
   int compute_i, sra, sr, si, sg, i, j, k;
 
-  int itop;
-  int k1;
-
   double temp;
 
   double         *bp, *cp;
@@ -401,7 +390,7 @@ void            MatvecSubMat(
 
   double         *top_dat = NULL;
 
-  int vi, mi, y_index, x_index;
+  int vi, mi;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -453,10 +442,9 @@ void            MatvecSubMat(
         yp = SubvectorElt(y_sub, ix, iy, iz);
 
         vi = 0;
-        _BoxLoopI1(NO_LOCALS,
-                   i, j, k,
-                   ix, iy, iz, nx, ny, nz,
-                   vi, nx_v, ny_v, nz_v, 1, 1, 1,
+        BoxLoopI1(i, j, k,
+                  ix, iy, iz, nx, ny, nz,
+                  vi, nx_v, ny_v, nz_v, 1, 1, 1,
         {
           yp[vi] *= beta;
         });
@@ -528,23 +516,21 @@ void            MatvecSubMat(
               vi = 0;
               if (temp == 0.0)
               {
-                _BoxLoopI1(NO_LOCALS,
-                           i, j, k,
-                           ix, iy, iz, nx, ny, nz,
-                           vi, nx_v, ny_v, nz_v, 1, 1, 1,
-                {
-                  yp[vi] = 0.0;
-                });
+                BoxLoopI1(i, j, k,
+                          ix, iy, iz, nx, ny, nz,
+                          vi, nx_v, ny_v, nz_v, 1, 1, 1,
+              {
+                yp[vi] = 0.0;
+              });
               }
               else
               {
-                _BoxLoopI1(NO_LOCALS,
-                           i, j, k,
-                           ix, iy, iz, nx, ny, nz,
-                           vi, nx_v, ny_v, nz_v, 1, 1, 1,
-                {
-                  yp[vi] *= temp;
-                });
+                BoxLoopI1(i, j, k,
+                          ix, iy, iz, nx, ny, nz,
+                          vi, nx_v, ny_v, nz_v, 1, 1, 1,
+              {
+                yp[vi] *= temp;
+              });
               }
             }
           }
@@ -637,11 +623,10 @@ void            MatvecSubMat(
 
           vi = 0; mi = 0;
 
-          _BoxLoopI2(NO_LOCALS,
-                     i, j, k,
-                     ix, iy, iz, nx, ny, nz,
-                     vi, nx_v, ny_v, nz_v, sx, sy, sz,
-                     mi, nx_m, ny_m, nz_m, 1, 1, 1,
+          BoxLoopI2(i, j, k,
+                    ix, iy, iz, nx, ny, nz,
+                    vi, nx_v, ny_v, nz_v, sx, sy, sz,
+                    mi, nx_m, ny_m, nz_m, 1, 1, 1,
           {
             yp[vi] += bp[mi] * xp[vi];
           });
@@ -654,30 +639,26 @@ void            MatvecSubMat(
         {
           cp = SubmatrixElt(JC_sub, si, ix, iy, iz);
 
-          vi = 0;
-          mi = 0;
-          x_index = 0;
-          y_index = 0;
+          vi = 0; mi = 0;
 
           /* Only JC involved here */
-          _BoxLoopI2(LOCALS(k1, itop, y_index, x_index),
-                     i, j, k,
-                     ix, iy, iz, nx, ny, 1,
-                     vi, nx_v, ny_v, nz_v, sx, sy, sz,
-                     mi, nx_mc, ny_mc, nz_mc, 1, 1, 1,
+          BoxLoopI2(i, j, k,
+                    ix, iy, iz, nx, ny, 1,
+                    vi, nx_v, ny_v, nz_v, sx, sy, sz,
+                    mi, nx_mc, ny_mc, nz_mc, 1, 1, 1,
           {
-            itop = SubvectorEltIndex(top_sub, i, j, 0);
-            k1 = (int)top_dat[itop];
+            int itop = SubvectorEltIndex(top_sub, i, j, 0);
+            int k1 = (int)top_dat[itop];
             /* Since we are using a boxloop, we need to check for top index
              * to update with the surface contributions */
             if (k1 >= 0)
             {
-              y_index = SubvectorEltIndex(y_sub, i, j, k1);
+              int y_index = SubvectorEltIndex(y_sub, i, j, k1);
               //itop   = SubvectorEltIndex(top_sub, (i+s[si][0]), (j+s[si][1]), 0);
               k1 = (int)top_dat[itop + s[si][0] + nx_v * s[si][1]];
               if (k1 >= 0)
               {
-                x_index = SubvectorEltIndex(x_sub, (i + s[si][0]), (j + s[si][1]), k1);
+                int x_index = SubvectorEltIndex(x_sub, (i + s[si][0]), (j + s[si][1]), k1);
 
                 yp[y_index] += cp[mi] * xp[x_index];
               }
@@ -691,7 +672,7 @@ void            MatvecSubMat(
           yp = SubvectorElt(y_sub, ix, iy, iz);
 
           vi = 0;
-          _BoxLoopI1(NO_LOCALS,i, j, k,
+          BoxLoopI1(i, j, k,
                     ix, iy, iz, nx, ny, nz,
                     vi, nx_v, ny_v, nz_v, 1, 1, 1,
           {
@@ -719,7 +700,7 @@ void            MatvecSubMat(
  * as mapping a (2D) vector corresponding to surface contributions, to a (3D)
  * vector corresponding to subsurface contributions. The result, y, is a 3D vector.
  *--------------------------------------------------------------------------*/
-void            MatvecJacF(
+void            CU_MatvecJacF(
                            ProblemData *problem_data,
                            double       alpha,
                            Matrix *     JF,
@@ -728,8 +709,6 @@ void            MatvecJacF(
                            Vector *     y
                            )
 {
-  CU_CALL(CU_MatvecJacF(problem_data, alpha, JF, x, beta, y));
-
   VectorUpdateCommHandle *handle = NULL;
 
   Grid           *grid = MatrixGrid(JF);
@@ -755,16 +734,13 @@ void            MatvecJacF(
 
   int compute_i, sra, sr, si, sg, i, j, k;
 
-  int itop;
-  int k1;
-
   double temp;
 
   double         *fp, *top_dat;
   double         *xp;
   double         *yp;
 
-  int vi, mi, y_index;
+  int vi, mi;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -815,10 +791,9 @@ void            MatvecJacF(
         yp = SubvectorElt(y_sub, ix, iy, iz);
 
         vi = 0;
-        _BoxLoopI1(NO_LOCALS,
-                   i, j, k,
-                   ix, iy, iz, nx, ny, nz,
-                   vi, nx_v, ny_v, nz_v, 1, 1, 1,
+        BoxLoopI1(i, j, k,
+                  ix, iy, iz, nx, ny, nz,
+                  vi, nx_v, ny_v, nz_v, 1, 1, 1,
         {
           yp[vi] *= beta;
         });
@@ -890,23 +865,21 @@ void            MatvecJacF(
               vi = 0;
               if (temp == 0.0)
               {
-                _BoxLoopI1(NO_LOCALS,
-                           i, j, k,
-                           ix, iy, iz, nx, ny, nz,
-                           vi, nx_v, ny_v, nz_v, 1, 1, 1,
-                {
-                  yp[vi] = 0.0;
-                });
+                BoxLoopI1(i, j, k,
+                          ix, iy, iz, nx, ny, nz,
+                          vi, nx_v, ny_v, nz_v, 1, 1, 1,
+              {
+                yp[vi] = 0.0;
+              });
               }
               else
               {
-                _BoxLoopI1(NO_LOCALS,
-                           i, j, k,
-                           ix, iy, iz, nx, ny, nz,
-                           vi, nx_v, ny_v, nz_v, 1, 1, 1,
-                {
-                  yp[vi] *= temp;
-                });
+                BoxLoopI1(i, j, k,
+                          ix, iy, iz, nx, ny, nz,
+                          vi, nx_v, ny_v, nz_v, 1, 1, 1,
+              {
+                yp[vi] *= temp;
+              });
               }
             }
           }
@@ -994,19 +967,17 @@ void            MatvecJacF(
 
           vi = 0;
           mi = 0;
-          y_index = 0;
 
-          _BoxLoopI2(LOCALS(itop, k1, y_index),
-                     i, j, k,
-                     ix, iy, iz, nx, ny, 1,
-                     vi, nx_v, ny_v, nz_v, sx, sy, sz,
-                     mi, nx_mf, ny_mf, nz_mf, 1, 1, 1,
+          BoxLoopI2(i, j, k,
+                    ix, iy, iz, nx, ny, 1,
+                    vi, nx_v, ny_v, nz_v, sx, sy, sz,
+                    mi, nx_mf, ny_mf, nz_mf, 1, 1, 1,
           {
-            itop = SubvectorEltIndex(top_sub, (i + s[si][0]), (j + s[si][1]), 0);
-            k1 = (int)top_dat[itop];
+            int itop = SubvectorEltIndex(top_sub, (i + s[si][0]), (j + s[si][1]), 0);
+            int k1 = (int)top_dat[itop];
             if (k1 >= 0)
             {
-              y_index = SubvectorEltIndex(y_sub, i, j, k1);
+              int y_index = SubvectorEltIndex(y_sub, i, j, k1);
               yp[y_index] += fp[mi] * xp[vi];
             }
           });
@@ -1022,17 +993,16 @@ void            MatvecJacF(
         fp = SubmatrixElt(JF_sub, si, ix, iy, iz);
 
         vi = 0; mi = 0;
-        _BoxLoopI2(LOCALS(itop, k1, y_index),
-                   i, j, k,
-                   ix, iy, iz, nx, ny, 1,
-                   vi, nx_v, ny_v, nz_v, sx, sy, sz,
-                   mi, nx_mf, ny_mf, nz_mf, 1, 1, 1,
+        BoxLoopI2(i, j, k,
+                  ix, iy, iz, nx, ny, 1,
+                  vi, nx_v, ny_v, nz_v, sx, sy, sz,
+                  mi, nx_mf, ny_mf, nz_mf, 1, 1, 1,
         {
-          itop = SubvectorEltIndex(top_sub, i, j, 0);
-          k1 = (int)top_dat[itop];
+          int itop = SubvectorEltIndex(top_sub, i, j, 0);
+          int k1 = (int)top_dat[itop];
           if (k1 >= 0)
           {
-            y_index = SubvectorEltIndex(y_sub, i, j, (k1 - s[si][2]));       /* (i,j,k-1) from top */
+            int y_index = SubvectorEltIndex(y_sub, i, j, (k1 - s[si][2]));       /* (i,j,k-1) from top */
             yp[y_index] += fp[mi] * xp[vi];
           }
         });
@@ -1043,7 +1013,7 @@ void            MatvecJacF(
           yp = SubvectorElt(y_sub, ix, iy, iz);
 
           vi = 0;
-          _BoxLoopI1(NO_LOCALS,i, j, k,
+          BoxLoopI1(i, j, k,
                     ix, iy, iz, nx, ny, nz,
                     vi, nx_v, ny_v, nz_v, 1, 1, 1,
           {
@@ -1072,7 +1042,7 @@ void            MatvecJacF(
  * as mapping a (3D) vector corresponding to subsurface contributions, to a (2D)
  * vector corresponding to surface contributions. The resulting vector, y, is 2D.
  *--------------------------------------------------------------------------*/
-void            MatvecJacE(
+void            CU_MatvecJacE(
                            ProblemData *problem_data,
                            double       alpha,
                            Matrix *     JE,
@@ -1081,8 +1051,6 @@ void            MatvecJacE(
                            Vector *     y
                            )
 {
-  CU_CALL(CU_MatvecJacE(problem_data, alpha, JE, x, beta, y));
-
   VectorUpdateCommHandle *handle = NULL;
 
   Grid           *grid = MatrixGrid(JE);
@@ -1108,15 +1076,13 @@ void            MatvecJacE(
 
   int compute_i, sra, sr, si, sg, i, j, k;
 
-  int itop, k1;
-
   double temp;
 
   double         *ep, *top_dat;
   double         *xp;
   double         *yp;
 
-  int vi, mi, x_index;
+  int vi, mi;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -1167,10 +1133,9 @@ void            MatvecJacE(
         yp = SubvectorElt(y_sub, ix, iy, iz);
 
         vi = 0;
-        _BoxLoopI1(NO_LOCALS,
-                   i, j, k,
-                   ix, iy, iz, nx, ny, nz,
-                   vi, nx_v, ny_v, nz_v, 1, 1, 1,
+        BoxLoopI1(i, j, k,
+                  ix, iy, iz, nx, ny, nz,
+                  vi, nx_v, ny_v, nz_v, 1, 1, 1,
         {
           yp[vi] *= beta;
         });
@@ -1242,23 +1207,21 @@ void            MatvecJacE(
               vi = 0;
               if (temp == 0.0)
               {
-                _BoxLoopI1(NO_LOCALS,
-                           i, j, k,
-                           ix, iy, iz, nx, ny, nz,
-                           vi, nx_v, ny_v, nz_v, 1, 1, 1,
-                {
-                  yp[vi] = 0.0;
-                });
+                BoxLoopI1(i, j, k,
+                          ix, iy, iz, nx, ny, nz,
+                          vi, nx_v, ny_v, nz_v, 1, 1, 1,
+              {
+                yp[vi] = 0.0;
+              });
               }
               else
               {
-                _BoxLoopI1(NO_LOCALS,
-                           i, j, k,
-                           ix, iy, iz, nx, ny, nz,
-                           vi, nx_v, ny_v, nz_v, 1, 1, 1,
-                {
-                  yp[vi] *= temp;
-                });
+                BoxLoopI1(i, j, k,
+                          ix, iy, iz, nx, ny, nz,
+                          vi, nx_v, ny_v, nz_v, 1, 1, 1,
+              {
+                yp[vi] *= temp;
+              });
               }
             }
           }
@@ -1343,19 +1306,17 @@ void            MatvecJacE(
 
           vi = 0;
           mi = 0;
-          x_index = 0;
 
-          _BoxLoopI2(LOCALS(itop, k1, x_index),
-                     i, j, k,
-                     ix, iy, iz, nx, ny, 1,
-                     vi, nx_v, ny_v, nz_v, sx, sy, sz,
-                     mi, nx_me, ny_me, nz_me, 1, 1, 1,
+          BoxLoopI2(i, j, k,
+                    ix, iy, iz, nx, ny, 1,
+                    vi, nx_v, ny_v, nz_v, sx, sy, sz,
+                    mi, nx_me, ny_me, nz_me, 1, 1, 1,
           {
-            itop = SubvectorEltIndex(top_sub, i, j, 0);
-            k1 = (int)top_dat[itop];
+            int itop = SubvectorEltIndex(top_sub, i, j, 0);
+            int k1 = (int)top_dat[itop];
             if (k1 >= 0)
             {
-              x_index = SubvectorEltIndex(x_sub, (i + s[si][0]), (j + s[si][1]), k1);
+              int x_index = SubvectorEltIndex(x_sub, (i + s[si][0]), (j + s[si][1]), k1);
               yp[vi] += ep[mi] * xp[x_index];
             }
           });
@@ -1365,21 +1326,17 @@ void            MatvecJacE(
         si = 5;
         ep = SubmatrixElt(JE_sub, si, ix, iy, iz);
 
-        vi = 0;
-        mi = 0;
-        x_index = 0;
-
-        _BoxLoopI2(LOCALS(itop, k1, x_index),
-                   i, j, k,
-                   ix, iy, iz, nx, ny, 1,
-                   vi, nx_v, ny_v, nz_v, sx, sy, sz,
-                   mi, nx_me, ny_me, nz_me, 1, 1, 1,
+        vi = 0; mi = 0;
+        BoxLoopI2(i, j, k,
+                  ix, iy, iz, nx, ny, 1,
+                  vi, nx_v, ny_v, nz_v, sx, sy, sz,
+                  mi, nx_me, ny_me, nz_me, 1, 1, 1,
         {
-          itop = SubvectorEltIndex(top_sub, i, j, 0);
-          k1 = (int)top_dat[itop];
+          int itop = SubvectorEltIndex(top_sub, i, j, 0);
+          int k1 = (int)top_dat[itop];
           if (k1 >= 0)
           {
-            x_index = SubvectorEltIndex(x_sub, i, j, (k1 + s[si][2]));          /* (i,j,k-1) from top */
+            int x_index = SubvectorEltIndex(x_sub, i, j, (k1 + s[si][2]));          /* (i,j,k-1) from top */
             yp[vi] += ep[mi] * xp[x_index];
           }
         });
@@ -1390,10 +1347,9 @@ void            MatvecJacE(
           yp = SubvectorElt(y_sub, ix, iy, iz);
 
           vi = 0;
-          _BoxLoopI1(NO_LOCALS,
-                     i, j, k,
-                     ix, iy, iz, nx, ny, nz,
-                     vi, nx_v, ny_v, nz_v, 1, 1, 1,
+          BoxLoopI1(i, j, k,
+                    ix, iy, iz, nx, ny, nz,
+                    vi, nx_v, ny_v, nz_v, 1, 1, 1,
           {
             yp[vi] *= alpha;
           });
@@ -1412,7 +1368,6 @@ void            MatvecJacE(
   EventTiming[NumEvents++][MatvecEnd] = amps_Clock();
 #endif
 }
-
-#ifdef USING_PARALLEL
-} // Extern C
+#ifdef HAVE_CUDA
+}
 #endif

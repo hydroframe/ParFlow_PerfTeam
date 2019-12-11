@@ -26,35 +26,33 @@
  *  USA
  **********************************************************************EHEADER*/
 /*****************************************************************************
-* Inner Product of two vectors
 *
 *****************************************************************************/
-
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
-#include "pf_parallel.h"
 
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
-double   InnerProd(
-                   Vector *x,
-                   Vector *y)
+void     Axpy(
+              double  alpha,
+              Vector *x,
+              Vector *y)
 {
-  CU_CALL(CU_InnerProd(x, y));
+  Grid       *grid = VectorGrid(x);
+  Subgrid    *subgrid;
 
-  Grid         *grid = VectorGrid(x);
-  Subgrid      *subgrid;
+  Subvector  *y_sub;
+  Subvector  *x_sub;
 
-  Subvector    *y_sub;
-  Subvector    *x_sub;
-
-  double       *yp, *xp;
-
-  double result = 0.0;
+  double     *yp, *xp;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -62,10 +60,6 @@ double   InnerProd(
 
   int i_s, i, j, k, iv;
 
-  amps_Invoice result_invoice;
-
-
-  result_invoice = amps_NewInvoice("%d", &result);
 
   ForSubgridI(i_s, GridSubgrids(grid))
   {
@@ -90,23 +84,16 @@ double   InnerProd(
     xp = SubvectorElt(x_sub, ix, iy, iz);
 
     iv = 0;
-    BoxLoopReduceI1(result,
-                    i, j, k, ix, iy, iz, nx, ny, nz,
-                    iv, nx_v, ny_v, nz_v, 1, 1, 1,
+    BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
+              iv, nx_v, ny_v, nz_v, 1, 1, 1,
     {
-      result += yp[iv] * xp[iv];
+      yp[iv] += alpha * xp[iv];
     });
   }
 
-  amps_AllReduce(amps_CommWorld, result_invoice, amps_Add);
-
-  amps_FreeInvoice(result_invoice);
-
-  IncFLOPCount(2 * VectorSize(x) - 1);
-
-  return result;
+  IncFLOPCount(2 * VectorSize(x));
 }
 
-#ifdef USING_PARALLEL
-} // Extern C
+#ifdef HAVE_CUDA
+}
 #endif

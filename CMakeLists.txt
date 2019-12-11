@@ -114,6 +114,7 @@ set (PARFLOW_USING_PARALLEL False CACHE BOOL "OpenMP or CUDA Parallelism Flag")
 #-----------------------------------------------------------------------------
 set (PARFLOW_ENABLE_OMP False CACHE BOOL "Enable OpenMP")
 if ( ${PARFLOW_ENABLE_OMP} )
+
 # TODO: Check for versioning requirements?
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
@@ -123,6 +124,33 @@ if ( ${PARFLOW_ENABLE_OMP} )
    set (USING_PARALLEL ${PARFLOW_USING_PARALLEL})
 
 endif( ${PARFLOW_ENABLE_OMP} )
+
+#-----------------------------------------------------------------------------
+# GPU-Acceleration (CUDA)
+#-----------------------------------------------------------------------------
+set (PARFLOW_ENABLE_CUDA False)
+set (PARFLOW_ENABLE_CUDA CACHE BOOL "Enable CUDA")
+if( ${PARFLOW_ENABLE_CUDA} )
+
+# Initialize CUDA
+  include(CheckLanguage)
+  check_language(CUDA)
+  if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_70,code=sm_70 --maxrregcount=62 --expt-extended-lambda")
+    set(CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -G --ptxas-options=-v")
+    set(CMAKE_CUDA_FLAGS_RELEASE "-Xptxas ${CMAKE_CUDA_FLAGS_RELEASE}")
+    message(STATUS "Found CUDA ${CMAKE_CUDA_COMPILER_VERSION} at ${CMAKE_CUDA_COMPILER}")
+    set(PARFLOW_HAVE_CUDA "yes")
+    set(HAVE_CUDA ${PARFLOW_HAVE_CUDA})
+	set (PARFLOW_USING_PARALLEL "yes")
+	set (USING_PARALLEL ${PARFLOW_USING_PARALLEL} )
+  else(CMAKE_CUDA_COMPILER)
+    message(FATAL_ERROR "ERROR: CUDA installation not found")
+  endif(CMAKE_CUDA_COMPILER)
+
+endif( ${PARFLOW_ENABLE_CUDA} )
+
 
 #-----------------------------------------------------------------------------
 # SILO

@@ -46,6 +46,8 @@ void     Copy(
               Vector *x,
               Vector *y)
 {
+  CU_CALL(CU_Copy(x, y));
+
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 

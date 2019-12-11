@@ -1102,4 +1102,3 @@ void ComputeBoxes(GrGeomSolid *geom_solid)
 
   EndTiming(ClusteringTimingIndex);
 }
-

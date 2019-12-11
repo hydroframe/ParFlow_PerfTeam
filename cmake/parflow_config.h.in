@@ -65,5 +65,8 @@
 #cmakedefine PARFLOW_HAVE_OMP
 #cmakedefine HAVE_OMP
 
+#cmakedefine PARFLOW_HAVE_CUDA
+#cmakedefine HAVE_CUDA
+
 #cmakedefine PARFLOW_USING_PARALLEL
 #cmakedefine USING_PARALLEL

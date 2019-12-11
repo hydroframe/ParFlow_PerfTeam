@@ -64,20 +64,27 @@
  *
  * PFVLayerCopy (a, b, x, y)         NBE: Extracts layer b from vector y, inserts into layer a of vector x
  ****************************************************************************/
-
 #include "parflow_config.h"
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 extern "C"{
 #endif
 
 #include "parflow.h"
-#include "pf_parallel.h"
+
+#ifdef HAVE_CUDA
+#include "pfcudaloops.h"
+#include "pfcudamalloc.h"
+#endif
 
 #include <string.h>
 
 #define ZERO 0.0
 #define ONE  1.0
+
+/* These must be in the global scope due to __managed__ keyword */
+__managed__ static int val;
+__managed__ static double result;
 
 void PFVLinearSum(
 /* LinearSum : z = a * x + b * y              */
@@ -88,8 +95,6 @@ void PFVLinearSum(
                   Vector *z)
 
 {
-  CU_CALL(CU_PFVLinearSum(a, x, b, y, z));
-
   double c;
   Vector *v1, *v2;
   int test;
@@ -221,11 +226,10 @@ void PFVLinearSum(
     i_x = 0;
     i_y = 0;
     i_z = 0;
-    _BoxLoopI3(NO_LOCALS,
-               i, j, k, ix, iy, iz, nx, ny, nz,
-               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
-               i_y, nx_y, ny_y, nz_y, 1, 1, 1,
-               i_z, nx_z, ny_z, nz_z, 1, 1, 1,
+    BoxLoopI3(i, j, k, ix, iy, iz, nx, ny, nz,
+              i_x, nx_x, ny_x, nz_x, 1, 1, 1,
+              i_y, nx_y, ny_y, nz_y, 1, 1, 1,
+              i_z, nx_z, ny_z, nz_z, 1, 1, 1,
     {
       zp[i_z] = a * xp[i_x] + b * yp[i_y];
     });
@@ -238,8 +242,6 @@ void PFVConstInit(
                   double  c,
                   Vector *z)
 {
-  CU_CALL(PFVConstInit(c, z));
-
   Grid       *grid = VectorGrid(z);
   Subgrid    *subgrid;
 
@@ -274,9 +276,8 @@ void PFVConstInit(
     zp = SubvectorElt(z_sub, ix, iy, iz);
 
     i_z = 0;
-    _BoxLoopI1(NO_LOCALS,
-               i, j, k, ix, iy, iz, nx, ny, nz,
-               i_z, nx_z, ny_z, nz_z, 1, 1, 1,
+    BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
+              i_z, nx_z, ny_z, nz_z, 1, 1, 1,
     {
       zp[i_z] = c;
     });
@@ -289,8 +290,6 @@ void PFVProd(
              Vector *y,
              Vector *z)
 {
-  CU_CALL(CU_PFVProd(x, y, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -344,8 +343,7 @@ void PFVProd(
     i_x = 0;
     i_y = 0;
     i_z = 0;
-    _BoxLoopI3(NO_LOCALS,
-               i, j, k, ix, iy, iz, nx, ny, nz,
+    BoxLoopI3(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
               i_y, nx_y, ny_y, nz_y, 1, 1, 1,
               i_z, nx_z, ny_z, nz_z, 1, 1, 1,
@@ -362,8 +360,6 @@ void PFVDiv(
             Vector *y,
             Vector *z)
 {
-  CU_CALL(CU_PFVDiv(x, y, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -416,8 +412,7 @@ void PFVDiv(
     i_x = 0;
     i_y = 0;
     i_z = 0;
-    _BoxLoopI3(NO_LOCALS,
-               i, j, k, ix, iy, iz, nx, ny, nz,
+    BoxLoopI3(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
               i_y, nx_y, ny_y, nz_y, 1, 1, 1,
               i_z, nx_z, ny_z, nz_z, 1, 1, 1,
@@ -434,8 +429,6 @@ void PFVScale(
               Vector *x,
               Vector *z)
 {
-  CU_CALL(CU_PFVScale(c, x, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -495,10 +488,9 @@ void PFVScale(
 
       i_x = 0;
       i_z = 0;
-      _BoxLoopI2(NO_LOCALS,
-                 i, j, k, ix, iy, iz, nx, ny, nz,
-                 i_x, nx_x, ny_x, nz_x, 1, 1, 1,
-                 i_z, nx_z, ny_z, nz_z, 1, 1, 1,
+      BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
+                i_x, nx_x, ny_x, nz_x, 1, 1, 1,
+                i_z, nx_z, ny_z, nz_z, 1, 1, 1,
       {
         zp[i_z] = c * xp[i_x];
       });
@@ -512,8 +504,6 @@ void PFVAbs(
             Vector *x,
             Vector *z)
 {
-  CU_CALL(CU_PFVAbs(x, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -557,8 +547,7 @@ void PFVAbs(
 
     i_x = 0;
     i_z = 0;
-    _BoxLoopI2(NO_LOCALS,
-               i, j, k, ix, iy, iz, nx, ny, nz,
+    BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
               i_z, nx_z, ny_z, nz_z, 1, 1, 1,
     {
@@ -572,7 +561,6 @@ void PFVInv(
             Vector *x,
             Vector *z)
 {
-  CU_CALL(CU_PFVInv(x, z))
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -616,8 +604,7 @@ void PFVInv(
 
     i_x = 0;
     i_z = 0;
-    _BoxLoopI2(NO_LOCALS,
-               i, j, k, ix, iy, iz, nx, ny, nz,
+    BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
               i_z, nx_z, ny_z, nz_z, 1, 1, 1,
     {
@@ -633,8 +620,6 @@ void PFVAddConst(
                  double  b,
                  Vector *z)
 {
-  CU_CALL(CU_PFVAddConst(x, b, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -678,8 +663,7 @@ void PFVAddConst(
 
     i_x = 0;
     i_z = 0;
-    _BoxLoopI2(NO_LOCALS,
-               i, j, k, ix, iy, iz, nx, ny, nz,
+    BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
               i_z, nx_z, ny_z, nz_z, 1, 1, 1,
     {
@@ -694,8 +678,6 @@ double PFVDotProd(
                   Vector *x,
                   Vector *y)
 {
-  CU_CALL(CU_PFVDotProd(x,y));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -703,7 +685,6 @@ double PFVDotProd(
   Subvector  *y_sub;
 
   double     *yp, *xp;
-  double sum = ZERO;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -713,6 +694,8 @@ double PFVDotProd(
   int sg, i, j, k, i_x, i_y;
 
   amps_Invoice result_invoice;
+
+  result = ZERO;
 
   ForSubgridI(sg, GridSubgrids(grid))
   {
@@ -742,36 +725,48 @@ double PFVDotProd(
 
     i_x = 0;
     i_y = 0;
+
+#ifdef HAVE_CUDA
+    auto loop_function = GPU_LAMBDA(
+      const double * __restrict__  xp,
+      const double * __restrict__  yp,
+      const int i_x, const int i_y)
+    {
+      return xp[i_x] * yp[i_y];
+    };
+    DotLoopGPU(i, j, k, ix, iy, iz, nx, ny, nz,
+              i_x, nx_x, ny_x, nz_x, 1, 1, 1,
+              i_y, nx_y, ny_y, nz_y, 1, 1, 1,
+              xp, yp, result, loop_function);
+#else
     BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
               i_y, nx_y, ny_y, nz_y, 1, 1, 1,
     {
-      sum += xp[i_x] * yp[i_y];
+      PlusEquals(result, xp[i_x] * yp[i_y]);
     });
+#endif
   }
 
-  result_invoice = amps_NewInvoice("%d", &sum);
+  result_invoice = amps_NewInvoice("%d", &result);
   amps_AllReduce(amps_CommWorld, result_invoice, amps_Add);
   amps_FreeInvoice(result_invoice);
 
   IncFLOPCount(2 * VectorSize(x));
 
-  return(sum);
+  return(result);
 }
 
 double PFVMaxNorm(
 /* MaxNorm = || x ||_{max}   */
                   Vector *x)
 {
-  CU_CALL(CU_PFVMaxNorm(x));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
   Subvector  *x_sub;
 
   double     *xp;
-  double max_val = ZERO;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -780,6 +775,8 @@ double PFVMaxNorm(
   int sg, i, j, k, i_x;
 
   amps_Invoice result_invoice;
+
+  result = ZERO;
 
   ForSubgridI(sg, GridSubgrids(grid))
   {
@@ -805,16 +802,16 @@ double PFVMaxNorm(
     BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
     {
-      if (fabs(xp[i_x]) > max_val)
-        max_val = fabs(xp[i_x]);
+      double xp_abs = fabs(xp[i_x]);
+      pfmax_atomic(result, xp_abs);
     });
   }
 
-  result_invoice = amps_NewInvoice("%d", &max_val);
+  result_invoice = amps_NewInvoice("%d", &result);
   amps_AllReduce(amps_CommWorld, result_invoice, amps_Max);
   amps_FreeInvoice(result_invoice);
 
-  return(max_val);
+  return(result);
 }
 
 double PFVWrmsNorm(
@@ -822,8 +819,6 @@ double PFVWrmsNorm(
                    Vector *x,
                    Vector *w)
 {
-  CU_CALL(CU_PFVWrmsNorm(x,w));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -831,7 +826,6 @@ double PFVWrmsNorm(
   Subvector  *w_sub;
 
   double     *xp, *wp;
-  double prod, sum = ZERO;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -841,6 +835,8 @@ double PFVWrmsNorm(
   int sg, i, j, k, i_x, i_w;
 
   amps_Invoice result_invoice;
+
+  result = ZERO;
 
   ForSubgridI(sg, GridSubgrids(grid))
   {
@@ -874,18 +870,18 @@ double PFVWrmsNorm(
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
               i_w, nx_w, ny_w, nz_w, 1, 1, 1,
     {
-      prod = xp[i_x] * wp[i_w];
-      sum += prod * prod;
+      double prod = xp[i_x] * wp[i_w];
+      PlusEquals(result, prod * prod);
     });
   }
 
-  result_invoice = amps_NewInvoice("%d", &sum);
+  result_invoice = amps_NewInvoice("%d", &result);
   amps_AllReduce(amps_CommWorld, result_invoice, amps_Add);
   amps_FreeInvoice(result_invoice);
 
   IncFLOPCount(3 * VectorSize(x));
 
-  return(sqrt(sum / (x->size)));
+  return(sqrt(result / (x->size)));
 }
 
 double PFVWL2Norm(
@@ -893,8 +889,6 @@ double PFVWL2Norm(
                   Vector *x,
                   Vector *w)
 {
-  CU_CALL(CU_PFVWL2Norm(x, w));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -902,7 +896,6 @@ double PFVWL2Norm(
   Subvector  *w_sub;
 
   double     *xp, *wp;
-  double prod, sum = ZERO;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -912,6 +905,8 @@ double PFVWL2Norm(
   int sg, i, j, k, i_x, i_w;
 
   amps_Invoice result_invoice;
+
+  result = ZERO;
 
   ForSubgridI(sg, GridSubgrids(grid))
   {
@@ -941,37 +936,50 @@ double PFVWL2Norm(
 
     i_x = 0;
     i_w = 0;
+
+#ifdef HAVE_CUDA
+    auto loop_function = GPU_LAMBDA(
+      const double * __restrict__  xp,
+      const double * __restrict__  wp,
+      const int i_x, const int i_w)
+    {
+      double prod = xp[i_x] * wp[i_w];
+      return prod * prod;
+    };
+    DotLoopGPU(i, j, k, ix, iy, iz, nx, ny, nz,
+              i_x, nx_x, ny_x, nz_x, 1, 1, 1,
+              i_w, nx_w, ny_w, nz_w, 1, 1, 1,
+              xp, wp, result, loop_function);
+#else
     BoxLoopI2(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
               i_w, nx_w, ny_w, nz_w, 1, 1, 1,
     {
-      prod = xp[i_x] * wp[i_w];
-      sum += prod * prod;
+      double prod = xp[i_x] * wp[i_w];
+      PlusEquals(result, prod * prod);
     });
+#endif
   }
 
-  result_invoice = amps_NewInvoice("%d", &sum);
+  result_invoice = amps_NewInvoice("%d", &result);
   amps_AllReduce(amps_CommWorld, result_invoice, amps_Add);
   amps_FreeInvoice(result_invoice);
 
   IncFLOPCount(3 * VectorSize(x));
 
-  return(sqrt(sum));
+  return(sqrt(result));
 }
 
 double PFVL1Norm(
 /* L1Norm = sum_i |x_i|  */
                  Vector *x)
 {
-  CU_CALL(CU_PFVL1Norm(x));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
   Subvector  *x_sub;
 
   double     *xp;
-  double sum = ZERO;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -980,6 +988,8 @@ double PFVL1Norm(
   int sg, i, j, k, i_x;
 
   amps_Invoice result_invoice;
+
+  result = ZERO;
 
   ForSubgridI(sg, GridSubgrids(grid))
   {
@@ -1005,30 +1015,27 @@ double PFVL1Norm(
     BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
     {
-      sum += fabs(xp[i_x]);
+      PlusEquals(result, fabs(xp[i_x]));
     });
   }
 
-  result_invoice = amps_NewInvoice("%d", &sum);
+  result_invoice = amps_NewInvoice("%d", &result);
   amps_AllReduce(amps_CommWorld, result_invoice, amps_Add);
   amps_FreeInvoice(result_invoice);
 
-  return(sum);
+  return(result);
 }
 
 double PFVMin(
 /* Min = min_i(x_i)   */
               Vector *x)
 {
-  CU_CALL(CU_PFVMin(x));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
   Subvector  *x_sub;
 
   double     *xp;
-  double min_val;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -1038,9 +1045,11 @@ double PFVMin(
 
   amps_Invoice result_invoice;
 
-  result_invoice = amps_NewInvoice("%d", &min_val);
+  result_invoice = amps_NewInvoice("%d", &result);
 
   grid = VectorGrid(x);
+
+  result = ZERO;
 
   ForSubgridI(sg, GridSubgrids(grid))
   {
@@ -1062,14 +1071,14 @@ double PFVMin(
 
     xp = SubvectorElt(x_sub, ix, iy, iz);
 
-    /* Get initial guess for min_val */
+    /* Get initial guess for result */
     if (sg == 0)
     {
       i_x = 0;
       BoxLoopI1(i, j, k, ix, iy, iz, 1, 1, 1,
                 i_x, nx_x, ny_x, nz_x, 1, 1, 1,
       {
-        min_val = xp[i_x];
+        result = xp[i_x];
       });
     }
 
@@ -1077,30 +1086,26 @@ double PFVMin(
     BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
     {
-      if (xp[i_x] < min_val)
-        min_val = xp[i_x];
+      pfmin_atomic(result, xp[i_x]);
     });
   }
 
   amps_AllReduce(amps_CommWorld, result_invoice, amps_Min);
   amps_FreeInvoice(result_invoice);
 
-  return(min_val);
+  return(result);
 }
 
 double PFVMax(
 /* Max = max_i(x_i)   */
               Vector *x)
 {
-  CU_CALL(CU_PFVMax(x));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
   Subvector  *x_sub;
 
   double     *xp;
-  double max_val;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -1109,6 +1114,8 @@ double PFVMax(
   int sg, i, j, k, i_x;
 
   amps_Invoice result_invoice;
+
+  result = ZERO;
 
   ForSubgridI(sg, GridSubgrids(grid))
   {
@@ -1130,14 +1137,14 @@ double PFVMax(
 
     xp = SubvectorElt(x_sub, ix, iy, iz);
 
-    /* Get initial guess for max_val */
+    /* Get initial guess for result */
     if (sg == 0)
     {
       i_x = 0;
       BoxLoopI1(i, j, k, ix, iy, iz, 1, 1, 1,
                 i_x, nx_x, ny_x, nz_x, 1, 1, 1,
       {
-        max_val = xp[i_x];
+        result = xp[i_x];
       });
     }
 
@@ -1145,16 +1152,15 @@ double PFVMax(
     BoxLoopI1(i, j, k, ix, iy, iz, nx, ny, nz,
               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
     {
-      if (xp[i_x] > max_val)
-        max_val = xp[i_x];
+      pfmax_atomic(result, xp[i_x]);
     });
   }
 
-  result_invoice = amps_NewInvoice("%d", &max_val);
+  result_invoice = amps_NewInvoice("%d", &result);
   amps_AllReduce(amps_CommWorld, result_invoice, amps_Max);
   amps_FreeInvoice(result_invoice);
 
-  return(max_val);
+  return(result);
 }
 
 int PFVConstrProdPos(
@@ -1163,8 +1169,6 @@ int PFVConstrProdPos(
                      Vector *c,
                      Vector *x)
 {
-  CU_CALL(CU_PFVConstrProdPos(c, x));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1179,8 +1183,6 @@ int PFVConstrProdPos(
   int nx_c, ny_c, nz_c;
 
   int sg, i, j, k, i_x, i_c;
-
-  int val;
 
   amps_Invoice result_invoice;
 
@@ -1241,8 +1243,6 @@ void PFVCompare(
                 Vector *x,
                 Vector *z)
 {
-  CU_CALL(CU_PFVCompare(c, x, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1301,8 +1301,6 @@ int PFVInvTest(
                Vector *x,
                Vector *z)
 {
-  CU_CALL(CU_PFVInvTest(x, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1310,7 +1308,6 @@ int PFVInvTest(
   Subvector  *z_sub;
 
   double     *xp, *zp;
-  int val;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -1387,8 +1384,6 @@ int PFVInvTest(
 void PFVCopy(Vector *x,
              Vector *y)
 {
-  CU_CALL(CU_PFVCopy(x, y));
-
   Grid *grid = VectorGrid(x);
   int sg;
 
@@ -1403,7 +1398,11 @@ void PFVCopy(Vector *x,
     Subvector  *x_sub = VectorSubvector(x, sg);
     Subvector  *y_sub = VectorSubvector(y, sg);
 
+#ifdef HAVE_CUDA
+    CUDA_ERR(cudaMemcpy(SubvectorData(y_sub), SubvectorData(x_sub), SubvectorDataSize(y_sub)*sizeof(double), cudaMemcpyDeviceToDevice));
+#else
     memcpy(SubvectorData(y_sub), SubvectorData(x_sub), SubvectorDataSize(y_sub)*sizeof(double));
+#endif
   }
 }
 
@@ -1413,8 +1412,6 @@ void PFVSum(
             Vector *y,
             Vector *z)
 {
-  CU_CALL(CU_PFVSum(x, y, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1484,8 +1481,6 @@ void PFVDiff(
              Vector *y,
              Vector *z)
 {
-  CU_CALL(CU_PFVDiff(x,y,z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1555,8 +1550,6 @@ void PFVNeg(
             Vector *x,
             Vector *z)
 {
-  CU_CALL(CU_PFVNeg(x, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1617,8 +1610,6 @@ void PFVScaleSum(
                  Vector *y,
                  Vector *z)
 {
-  CU_CALL(CU_PFVScaleSum(c,x,y,z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1690,8 +1681,6 @@ void PFVScaleDiff(
                   Vector *y,
                   Vector *z)
 {
-  CU_CALL(CU_PFVScaleDiff(c, x, y, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1763,8 +1752,6 @@ void PFVLin1(
              Vector *y,
              Vector *z)
 {
-  CU_CALL(CU_PFVLin1(a, x, y, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1836,8 +1823,6 @@ void PFVLin2(
              Vector *y,
              Vector *z)
 {
-  CU_CALL(CU_PFVLin2(a, x, y, z));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1908,8 +1893,6 @@ void PFVAxpy(
              Vector *x,
              Vector *y)
 {
-  CU_CALL(CU_PFVAxpy(a, x, y));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -1969,8 +1952,6 @@ void PFVScaleBy(
                 double  a,
                 Vector *x)
 {
-  CU_CALL(CU_PFVScaleBy(a, x));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -2022,8 +2003,6 @@ void PFVLayerCopy(
                   Vector *x,
                   Vector *y)
 {
-  CU_CALL(CU_PFVLayerCopy(a, b, x ,y ));
-
   Grid       *grid = VectorGrid(x);
   Subgrid    *subgrid;
 
@@ -2106,6 +2085,6 @@ void PFVLayerCopy(
   IncFLOPCount(2 * VectorSize(x));
 }
 
-#ifdef USING_PARALLEL
+#ifdef HAVE_CUDA
 }
 #endif
