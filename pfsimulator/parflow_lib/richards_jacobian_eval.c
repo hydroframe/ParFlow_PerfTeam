@@ -1490,7 +1490,7 @@ void    RichardsJacobianEval(
       {
         switch (BCStructBCType(bc_struct, ipatch))
         {
-          ApplyBCPatch(OverlandKinematicBC, LOOP_VARS(i, j, k, fdir, ival, bc_struct, ipatch, is),
+          ApplyBCPatch(OverlandKinematicBC, LOOP_VARS(i, j, k, ival, bc_struct, ipatch, is),
                        NO_PRECOND, NO_POSTCOND,
                        NO_PROLOGUE, NO_EPILOGUE,
                        FACE(Front,
@@ -1572,7 +1572,7 @@ void    RichardsJacobianEval(
                        })
             ); /* End OverlandKinematicBC Loop */
 
-          ApplyBCPatch(OverlandDiffusiveBC, LOOP_VARS(i, j, k, fdir, ival, bc_struct, ipatch, is),
+          ApplyBCPatch(OverlandDiffusiveBC, LOOP_VARS(i, j, k, ival, bc_struct, ipatch, is),
                        NO_PRECOND, NO_POSTCOND,
                        NO_PROLOGUE, NO_EPILOGUE,
                        FACE(Front,
@@ -1653,7 +1653,7 @@ void    RichardsJacobianEval(
                        })
             ); /* End OverlandDiffusiveBC Loop */
 
-          ApplyBCPatch(OverlandBC, LOOP_VARS(i, j, k, fdir, ival, bc_struct, ipatch, is),
+          ApplyBCPatch(OverlandBC, LOOP_VARS(i, j, k, ival, bc_struct, ipatch, is),
                        NO_PRECOND, NO_POSTCOND,
                        NO_PROLOGUE, NO_EPILOGUE,
                        FACE(Front,

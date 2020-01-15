@@ -33,9 +33,9 @@
     break;                                                              \
   }
 
-#define ApplyAllPatches(loop_vars, ...)         \
-  {                                             \
-    BCStructPatchLoopNoFdir(loop_vars, ...);    \
+#define ApplyAllPatches(loop_vars, ...)               \
+  {                                                   \
+    BCStructPatchLoopNoFdir(loop_vars, __VA_ARGS__);  \
   }
 
 #define AnyOf(_case, ...) \

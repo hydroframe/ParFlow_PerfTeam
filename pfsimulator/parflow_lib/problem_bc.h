@@ -32,6 +32,9 @@
 #ifndef _PROBLEM_BC_HEADER
 #define _PROBLEM_BC_HEADER
 
+// @MCB: Util file for ApplyBCPatch macro system
+#include "bc_loop_util.h"
+
 #define DirichletBC  0
 #define FluxBC       1
 #define OverlandBC   2   //sk
