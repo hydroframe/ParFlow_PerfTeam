@@ -76,6 +76,9 @@ typedef struct {
 #define BCStructBCType(bc_struct, p)          ((bc_struct)->bc_types[p])
 #define BCStructPatchValues(bc_struct, p, s)  ((bc_struct)->values[p][s])
 
+#define ForBCStructNumPatches(ipatch, bc_struct)                    \
+  for(ipatch = 0; ipatch < BCStructNumPatches(bc_struct); ipatch++)
+
 /*--------------------------------------------------------------------------
  * Looping macro:
  *--------------------------------------------------------------------------*/
@@ -126,5 +129,25 @@ typedef struct {
     });                                                                           \
   }
 
-
+#define BCStructPatchLoopNoFdir(i, j, k, ival, bc_struct, ipatch, is,   \
+                                prologue, epilogue, ...)                \
+  {                                                                     \
+    GrGeomSolid  *PV_gr_domain = BCStructGrDomain(bc_struct);           \
+    int PV_patch_index = BCStructPatchIndex(bc_struct, ipatch);         \
+    Subgrid      *PV_subgrid = BCStructSubgrid(bc_struct, is);          \
+                                                                        \
+    int PV_r = SubgridRX(PV_subgrid);                                   \
+    int PV_ix = SubgridIX(PV_subgrid);                                  \
+    int PV_iy = SubgridIY(PV_subgrid);                                  \
+    int PV_iz = SubgridIZ(PV_subgrid);                                  \
+    int PV_nx = SubgridNX(PV_subgrid);                                  \
+    int PV_ny = SubgridNY(PV_subgrid);                                  \
+    int PV_nz = SubgridNZ(PV_subgrid);                                  \
+                                                                        \
+    ival = 0;                                                           \
+    GrGeomPatchLoopNoFdir(i, j, k, PV_gr_domain, PV_patch_index,        \
+                          PV_r, PV_ix, PV_iy, PV_iz, PV_nx, PV_ny, PV_nz, \
+                          prologue, { epilogue; ival++; },              \
+                          __VA_ARGS__);                                 \
+  }
 #endif

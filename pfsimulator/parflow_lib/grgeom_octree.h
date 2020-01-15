@@ -1149,6 +1149,27 @@ typedef struct grgeom_octree {
     })                                                                       \
   }
 
+#define GrGeomOctreeFaceLoopNoFdir(i, j, k, fdir, node, octree, level_of_interest, \
+                                   ix, iy, iz, nx, ny, nz,              \
+                                   prologue, epilogue, ...)             \
+  {                                                                     \
+    int PV_f;                                                           \
+                                                                        \
+    GrGeomOctreeInsideNodeLoop(i, j, k, node, octree, level_of_interest, \
+                               ix, iy, iz, nx, ny, nz,                  \
+                               TRUE,                                    \
+    {                                                                   \
+      for (PV_f = 0; PV_f < GrGeomOctreeNumFaces; PV_f++)               \
+        if (GrGeomOctreeHasFace(node, PV_f))                            \
+        {                                                               \
+          prologue;                                                     \
+          OctreeFacePhysics(PV_f, __VA_ARGS__);                         \
+          epilogue;                                                     \
+        }                                                               \
+    });                                                                 \
+  }
+
+
 /*==========================================================================
  *==========================================================================*/
 
