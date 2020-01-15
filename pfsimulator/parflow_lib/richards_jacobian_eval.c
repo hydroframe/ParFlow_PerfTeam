@@ -1173,7 +1173,35 @@ void    RichardsJacobianEval(
 
 
         ApplyBCPatch(OverlandBC, LOOP_VARS(i, j, k, ival, bc_struct, ipatch, is),
-                     NO_PRECOND, NO_POSTCOND,
+                     NO_PRECOND,
+                     POSTCONDITION(
+                     {
+                       /*
+                         @MCB:
+                         This used to be in the nested switch statement.
+                         That has been rearranged to fuse loops (see FACE(Front)),
+                         and the Module calls are now a post condition called after
+                         looping is done.
+                       */
+                       if (public_xtra->type == overland_flow && overlandspinup != 1)
+                       {
+                         if (diffusive == 0)
+                         {
+                           PFModuleInvokeType(OverlandFlowEvalInvoke, overlandflow_module,
+                                              (grid, is, bc_struct, ipatch, problem_data,
+                                               pressure, old_pressure,
+                                               ke_der, kw_der, kn_der, ks_der, NULL, NULL, CALCDER));
+                         }
+                         else
+                         {
+                           PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff,
+                                              (grid, is, bc_struct, ipatch, problem_data,
+                                               pressure, old_pressure,
+                                               ke_der, kw_der, kn_der, ks_der,
+                                               kens_der, kwns_der, knns_der, ksns_der, NULL, NULL, CALCDER));
+                         }
+                       }
+                     }),
                      PROLOGUE({
                          im = SubmatrixEltIndex(J_sub, i, j, k);
                        }),
@@ -1200,8 +1228,17 @@ void    RichardsJacobianEval(
                            }
                          }
 
-                         /* Do inner switch statements */
-                         /* @MCB: These should be separated into their own BC types */
+                         /*
+                           @MCB
+                           Check public_xtra type, do contributions.
+                           This used to be after the entire loop, but
+                           repeated the BCLoop and only performed computations
+                           on the Front face (fdir[2] == 1).
+                           We can just do those here, and move the PFModuleInvokes
+                           into the POSTCONDITION block.
+                           There's undoubtedly a cleaner way to deal with this, but
+                           I'm not sure what the right approach is right now.
+                         */
                          switch(public_xtra->type)
                          {
                            case no_nonlinear_jacobian:
@@ -1227,12 +1264,6 @@ void    RichardsJacobianEval(
 
                            case overland_flow:
                            {
-                             /* Get overland flow contributions - DOK*/
-                             // SGS can we skip this invocation if !overland_flow?
-                             //PFModuleInvokeType(OverlandFlowEvalInvoke, overlandflow_module,
-                             //                (grid, is, bc_struct, ipatch, problem_data, pressure,
-                             //                 ke_der, kw_der, kn_der, ks_der, NULL, NULL, CALCDER));
-
                              if (overlandspinup == 1)
                              {
                                ip = SubvectorEltIndex(p_sub, i, j, k);
@@ -1243,38 +1274,11 @@ void    RichardsJacobianEval(
                                if ((pp[ip]) >= 0.0)
                                {
                                  cp[im] += (vol / dz) * dt * (1.0 + 0.0);                     //LEC
-//                      printf("Jac SU: CP=%f im=%d  \n", cp[im], im);
-                               }
-                             }
-                             else
-                             {
-                               /* Get overland flow contributions for using kinematic or diffusive - LEC */
-                               if (diffusive == 0)
-                               {
-                                 PFModuleInvokeType(OverlandFlowEvalInvoke, overlandflow_module,
-                                                    (grid, is, bc_struct, ipatch, problem_data,
-                                                     pressure, old_pressure,
-                                                     ke_der, kw_der, kn_der, ks_der, NULL, NULL, CALCDER));
-                               }
-                               else
-                               {
-                                 /* Test running Diffuisve calc FCN */
-                                 //double *dummy1, *dummy2, *dummy3, *dummy4;
-                                 //PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff, (grid, is, bc_struct, ipatch, problem_data, pressure,
-                                 //                                             ke_der, kw_der, kn_der, ks_der,
-                                 //       dummy1, dummy2, dummy3, dummy4,
-                                 //                                                    NULL, NULL, CALCFCN));
-
-                                 PFModuleInvokeType(OverlandFlowEvalDiffInvoke, overlandflow_module_diff,
-                                                    (grid, is, bc_struct, ipatch, problem_data,
-                                                     pressure, old_pressure,
-                                                     ke_der, kw_der, kn_der, ks_der,
-                                                     kens_der, kwns_der, knns_der, ksns_der, NULL, NULL, CALCDER));
                                }
                              }
                            }
                          }
-                     })
+                     }) /* End Front Face */
           ); /* End OverlandBC Loop */
 
         ApplyBCPatch(SeepageFaceBC, LOOP_VARS(i, j, k, ival, bc_struct, ipatch, is),
