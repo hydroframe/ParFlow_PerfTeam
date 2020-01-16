@@ -8,6 +8,14 @@
 #define Back GrGeomOctreeFaceB
 #define Front GrGeomOctreeFaceF
 
+/* @MCB: This is mostly for documentation purposes.  We can get this by doing ((FACE & 1) ? -1 : 1) */
+#define LFDIR -1
+#define RFDIR 1
+#define DFDIR -1
+#define UFDIR 1
+#define BFDIR -1
+#define UFDIR 1
+
 #define AllBCTypes default
 #define FACE(a, b) XCASE(a, b)
 #define PROLOGUE(x) x
@@ -20,7 +28,7 @@
 #define NO_PRECOND {}
 #define NO_POSTCOND {}
 
-#define LOOP_VARS(...) __VA_ARGS__
+#define LOOP_VARS(i, j, k, ival, bc_struct, ipatch, is) i, j, k, ival, bc_struct, ipatch, is
 
 #define OctreeFacePhysics(key, ...) XSWITCH(key, __VA_ARGS__)
 
@@ -61,6 +69,7 @@
     EXPAND_FACES(COUNT_VARARGS(__VA_ARGS__))(__VA_ARGS__) \
                                                           \
     default:                                              \
+    fprintf(stderr, "Hit CONTINUE at %d on key %d\n", __LINE__, key);\
     continue;                                             \
   }
 
