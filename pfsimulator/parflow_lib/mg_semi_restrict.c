@@ -95,6 +95,8 @@ void             MGSemiRestrict(
    * Compute r_c in c_sr_array
    *--------------------------------------------------------------------*/
 
+  BeginTiming(MGSemiRestrictTimingIndex);
+
   for (compute_i = 0; compute_i < 2; compute_i++)
   {
     switch (compute_i)
@@ -184,6 +186,7 @@ void             MGSemiRestrict(
    * Increment the flop counter
    *-----------------------------------------------------------------------*/
   MASTER(IncFLOPCount(3 * VectorSize(r_c)));
+  EndTiming(MGSemiRestrictTimingIndex);
   //BARRIER;
 }
 

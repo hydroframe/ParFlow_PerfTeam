@@ -90,6 +90,8 @@ void             MGSemiProlong(
    * Compute e_f in c_sr_array
    *--------------------------------------------------------------------*/
 
+  BeginTiming(MGSemiProlongTimingIndex);
+
   ForSubregionI(i, c_sr_array)
   {
     subregion = SubregionArraySubregion(c_sr_array, i);
@@ -214,6 +216,7 @@ void             MGSemiProlong(
    *-----------------------------------------------------------------------*/
 
   MASTER(IncFLOPCount(3 * VectorSize(e_c)));
+  EndTiming(MGSemiProlongTimingIndex);
   //BARRIER;
 }
 

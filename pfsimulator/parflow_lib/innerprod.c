@@ -100,13 +100,30 @@ double   InnerProd(
     xp = SubvectorElt(x_sub, ix, iy, iz);
 
     iv = 0;
+    // @MCB: Change this to atomic writes, its (supposedly) faster and more accurate
+    #if 0
     __BoxLoopReduceI1(NO_LOCALS, result,
                       i, j, k, ix, iy, iz, nx, ny, nz,
                       iv, nx_v, ny_v, nz_v, 1, 1, 1,
     {
       result += yp[iv] * xp[iv];
     });
+    #else
+    double local_result = 0.0;
+    _BoxLoopI1(NoWait, NO_LOCALS,
+               i, j, k, ix, iy, iz, nx, ny, nz,
+               iv, nx_v, ny_v, nz_v, 1, 1, 1,
+    {
+        local_result += yp[iv] * xp[iv];
+    });
+
+    #pragma omp atomic update
+    result += local_result;
+
+    #endif
   }
+
+  BARRIER;
 
   MASTER(
   amps_AllReduce(amps_CommWorld, result_invoice, amps_Add);

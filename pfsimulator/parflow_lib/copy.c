@@ -61,6 +61,7 @@ void     Copy(
 
   int i_s, i, j, k, i_x, i_y;
 
+  BeginTiming(CopyTimingIndex);
 
   ForSubgridI(i_s, GridSubgrids(grid))
   {
@@ -98,6 +99,8 @@ void     Copy(
       yp[i_y] = xp[i_x];
     });
   }
+
+  EndTiming(CopyTimingIndex);
 }
 
 #ifdef USING_PARALLEL
