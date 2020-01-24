@@ -927,9 +927,9 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
     {
       ip = SubvectorEltIndex(p_sub, i, j, k);
       fp[ip] += dt * (u_right_dat[ip] + u_front_dat[ip] + u_upper_dat[ip]);
-      fp[ip + 1] -= dt * u_right_dat[ip];
-      fp[ip + sy_p] -= dt * u_front_dat[ip];
-      fp[ip + sz_p] -= dt * u_upper_dat[ip];
+      fp[ip] -= dt * u_right_dat[ip - sx_p];
+      fp[ip] -= dt * u_front_dat[ip - sy_p];
+      fp[ip] -= dt * u_upper_dat[ip - sz_p];
     });
   }
   }
