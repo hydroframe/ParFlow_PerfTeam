@@ -77,8 +77,6 @@ double   InnerProd(
 
   MASTER(result_invoice = amps_NewInvoice("%d", &result));
 
-  BARRIER;
-
   ForSubgridI(i_s, GridSubgrids(grid))
   {
     subgrid = GridSubgrid(grid, i_s);

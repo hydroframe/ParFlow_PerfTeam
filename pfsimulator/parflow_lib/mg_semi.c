@@ -252,11 +252,8 @@ void     MGSemi(
 
         IfLogging(1)
         {
-          #pragma omp master
-          {
-            norm_log[i - 1] = sqrt(r_dot_r);
-            rel_norm_log[i - 1] = b_dot_b ? sqrt(r_dot_r / b_dot_b) : 0.0;
-          }
+          norm_log[i - 1] = sqrt(r_dot_r);
+          rel_norm_log[i - 1] = b_dot_b ? sqrt(r_dot_r / b_dot_b) : 0.0;
         }
       }
     }
