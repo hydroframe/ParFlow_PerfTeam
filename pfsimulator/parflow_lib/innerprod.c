@@ -65,6 +65,7 @@ double   InnerProd(
     to InnerProd MUST be done by one active region at a time.
   */
   static double result = 0.0;
+  double local_result = 0.0;
 
   int ix, iy, iz;
   int nx, ny, nz;
@@ -109,7 +110,6 @@ double   InnerProd(
       result += yp[iv] * xp[iv];
     });
     #else
-    double local_result = 0.0;
     _BoxLoopI1(NoWait, NO_LOCALS,
                i, j, k, ix, iy, iz, nx, ny, nz,
                iv, nx_v, ny_v, nz_v, 1, 1, 1,
@@ -133,7 +133,6 @@ double   InnerProd(
 
   BARRIER;
 
-  //return result;
   /*
     @MCB:
     This is basically to confuse the compiler so that

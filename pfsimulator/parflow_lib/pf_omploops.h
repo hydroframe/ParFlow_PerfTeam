@@ -71,6 +71,11 @@
 
 // @MCB: Note, the trailing {} is to deal with potential semicolons
 #define BARRIER PRAGMA(omp barrier) {}
+#define NORETVAL
+#define COMMS_BARRIER(retval)																				\
+	if (amps_Size(amps_CommWorld) == 1 && omp_get_thread_num() != 0)	\
+		return retval;																									\
+	BARRIER;
 
 #define BEGIN_REGION PRAGMA(omp parallel) {
 #define END_REGION }

@@ -65,6 +65,7 @@ void  NewTiming()
   RegisterTiming("MGSemiProlong");
   RegisterTiming("RBGSPoint");
   RegisterTiming("Communication");
+  RegisterTiming("RichardsJacobianEval");
 #ifdef VECTOR_UPDATE_TIMING
   RegisterTiming("VectorUpdate");
 #endif

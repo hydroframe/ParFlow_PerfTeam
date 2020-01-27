@@ -407,6 +407,7 @@ void FreeCommPkg(
 CommHandle  *InitCommunication(
                                CommPkg *comm_pkg)
 {
+  #if 0
   /* @MCB:
      Only the master thread should do comms.
      This ensures
@@ -418,6 +419,9 @@ CommHandle  *InitCommunication(
   MASTER(handle = (CommHandle*)amps_IExchangePackage(comm_pkg->package));
   EndTiming(CommunicationTimingIndex);
   return handle;
+  #else
+  return (CommHandle*)amps_IExchangePackage(comm_pkg->package);
+  #endif
 }
 
 
@@ -434,12 +438,22 @@ void         FinalizeCommunication(
      2) Ensure all threads wait until sync is done before continuing on
   */
   BeginTiming(CommunicationTimingIndex);
-  BARRIER;
+  #if 0
+  //BARRIER;
   MASTER(if (handle)
   {
     (void)amps_Wait((amps_Handle)handle);
   });
-  BARRIER;
+  //BARRIER;
+  #else
+  if (omp_get_thread_num() != 0)
+  {
+    fprintf(stderr, "Error: Not master thread in Comms!\n");
+    exit(-1);
+  }
+  if (handle)
+    (void)amps_Wait((amps_Handle)handle);
+  #endif
   EndTiming(CommunicationTimingIndex);
 }
 

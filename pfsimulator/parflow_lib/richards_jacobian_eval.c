@@ -291,6 +291,8 @@ void    RichardsJacobianEval(
   CommHandle  *handle;
   VectorUpdateCommHandle  *vector_update_handle;
 
+  BeginTiming(RJETimingIndex);
+
   // Determine if an overland flow boundary condition is being used.
   // If so will use the analytic Jacobian.
   if (public_xtra->type == not_set)
@@ -1698,12 +1700,10 @@ void    RichardsJacobianEval(
 #pragma omp master
   {
     PFModuleInvokeType(RichardsBCInternalInvoke, bc_internal, (problem, problem_data, NULL, J, time,
-                                                               pressure, CALCDER));
-  }
+                                                              pressure, CALCDER));
 
-  BARRIER;
 
-  /* @MCB:
+ /* @MCB:
      TODO:
      End parallel region here?  This is a LOT of barriers and syncs.
      Maybe change update funcs so they don't have an internal barrier,
@@ -1745,6 +1745,10 @@ void    RichardsJacobianEval(
     vector_update_handle = InitVectorUpdate(KNns, VectorUpdateAll);
     FinalizeVectorUpdate(vector_update_handle);
   }
+
+  } // End Master
+
+  BARRIER;
 
   /* Build submatrix JC if overland flow case */
   if (ovlnd_flag && public_xtra->type == overland_flow)
@@ -2180,6 +2184,7 @@ void    RichardsJacobianEval(
 
   } // End Parallel Region
 
+  EndTiming(RJETimingIndex);
   /*-----------------------------------------------------------------------
    * Update matrix ghost points
    *-----------------------------------------------------------------------*/

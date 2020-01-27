@@ -102,13 +102,20 @@ void             MGSemiRestrict(
     switch (compute_i)
     {
       case 0:
+        #pragma omp master
+      {
         handle = InitCommunication(r_f_comm_pkg);
+      }
         compute_reg = ComputePkgIndRegion(compute_pkg);
         break;
 
       case 1:
       {
+        #pragma omp master
+        {
         FinalizeCommunication(handle);
+        }
+        BARRIER;
         compute_reg = ComputePkgDepRegion(compute_pkg);
       }
         break;

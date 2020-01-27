@@ -1259,14 +1259,18 @@ void ComputeBoxes(GrGeomSolid *geom_solid)
     }
 
     /* Synchronize for impending amps calls */
-    #pragma omp barrier
+    BARRIER;
 
+    #pragma omp master
+    {
     for (int i = 0; i < num_handles; i++)
     {
       VectorUpdateCommHandle   *handle;
       handle = InitVectorUpdate(handles[i]->indicator, VectorUpdateAll);
       FinalizeVectorUpdate(handle);
     }
+    }
+    BARRIER;
 
 #pragma omp single nowait
     {

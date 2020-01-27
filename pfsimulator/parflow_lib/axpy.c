@@ -144,8 +144,6 @@ void     InParallel_Axpy(
   }
 
   MASTER(IncFLOPCount(2 * VectorSize(x)));
-
-  BARRIER;
 }
 
 #ifdef USING_PARALLEL

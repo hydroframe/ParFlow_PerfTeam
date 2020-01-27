@@ -601,7 +601,11 @@ void              SetupCoarseOps(
       /*--------------------------------------------------------------------
        * Update prolongation matrix boundaries
        *--------------------------------------------------------------------*/
+      #pragma omp master
+      {
       FinalizeMatrixUpdate(InitMatrixUpdate(P_l[l]));
+      }
+      BARRIER;
 
       /*--------------------------------------------------------------------
        * Compute coarse coefficient matrix
@@ -714,7 +718,11 @@ void              SetupCoarseOps(
       /*--------------------------------------------------------------------
        * Update coefficient matrix boundaries
        *--------------------------------------------------------------------*/
+      #pragma omp master
+      {
       FinalizeMatrixUpdate(InitMatrixUpdate(A_l[l + 1]));
+      }
+      BARRIER;
 
       /*--------------------------------------------------------------------
        * Complete computation of center coefficient

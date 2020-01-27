@@ -50,12 +50,13 @@
 #define ClusteringTimingIndex 8
 #define MatrixInitTimingIndex 9
 #define CopyTimingIndex 10
-#define MGRestrictTimingIndex 11
-#define MGProlongTimingIndex 12
+#define MGSemiRestrictTimingIndex 11
+#define MGSemiProlongTimingIndex 12
 #define RedBlackGSTimingIndex 13
 #define CommunicationTimingIndex 14
+#define RJETimingIndex 15
 #ifdef VECTOR_UPDATE_TIMING
-#define VectorUpdateTimingIndex  15
+#define VectorUpdateTimingIndex  16
 #endif
 
 

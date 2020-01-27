@@ -263,13 +263,23 @@ void     RedBlackGSPoint(
       switch (compute_i)
       {
         case 0:
+          #pragma omp master
+        {
           handle = InitVectorUpdate(x, vector_update_mode);
+        }
           compute_reg = ComputePkgIndRegion(compute_pkg);
           break;
 
         case 1:
+        {
+          #pragma omp master
+          {
           FinalizeVectorUpdate(handle);
+          }
+
+          BARRIER;
           compute_reg = ComputePkgDepRegion(compute_pkg);
+        }
           break;
       }
 
