@@ -157,25 +157,22 @@ void            Matvec(
     switch (compute_i)
     {
       case 0:
+#pragma omp master
+        {
 
 #ifndef NO_VECTOR_UPDATE
 #ifdef VECTOR_UPDATE_TIMING
         BeginTiming(VectorUpdateTimingIndex);
-#pragma omp master
-        {
-          EventTiming[NumEvents][InitStart] = amps_Clock();
-        }
+        EventTiming[NumEvents][InitStart] = amps_Clock();
 #endif
         handle = InitVectorUpdate(x, VectorUpdateAll);
 
 #ifdef VECTOR_UPDATE_TIMING
-        #pragma omp master
-        {
         EventTiming[NumEvents][InitEnd] = amps_Clock();
-        }
         EndTiming(VectorUpdateTimingIndex);
 #endif
 #endif
+        }
 
         compute_reg = ComputePkgIndRegion(compute_pkg);
 
@@ -237,7 +234,9 @@ void            Matvec(
         break;
 
       case 1:
-
+      {
+        #pragma omp master
+        {
 #ifndef NO_VECTOR_UPDATE
 #ifdef VECTOR_UPDATE_TIMING
         BeginTiming(VectorUpdateTimingIndex);
@@ -250,8 +249,10 @@ void            Matvec(
         EndTiming(VectorUpdateTimingIndex);
 #endif
 #endif
-
+        }
+        BARRIER;
         compute_reg = ComputePkgDepRegion(compute_pkg);
+      }
         break;
     }
 
@@ -461,6 +462,8 @@ void            InParallel_Matvec(
     {
       case 0:
       {
+        #pragma omp master
+        {
 #ifndef NO_VECTOR_UPDATE
 #ifdef VECTOR_UPDATE_TIMING
         BeginTiming(VectorUpdateTimingIndex);
@@ -474,7 +477,7 @@ void            InParallel_Matvec(
         EndTiming(VectorUpdateTimingIndex);
 #endif
 #endif
-
+        }
         compute_reg = ComputePkgIndRegion(compute_pkg);
 
         /*-----------------------------------------------------------------
@@ -536,6 +539,8 @@ void            InParallel_Matvec(
 
       case 1:
       {
+        #pragma omp master
+        {
 #ifndef NO_VECTOR_UPDATE
 #ifdef VECTOR_UPDATE_TIMING
         BeginTiming(VectorUpdateTimingIndex);
@@ -548,7 +553,8 @@ void            InParallel_Matvec(
         EndTiming(VectorUpdateTimingIndex);
 #endif
 #endif
-
+        }
+        BARRIER;
         compute_reg = ComputePkgDepRegion(compute_pkg);
       }
         break;
@@ -781,24 +787,21 @@ void            InParallel_MatvecSubMat(
     switch (compute_i)
     {
       case 0:
-#ifndef NO_VECTOR_UPDATE
-#ifdef VECTOR_UPDATE_TIMING
 #pragma omp master
       {
+#ifndef NO_VECTOR_UPDATE
+#ifdef VECTOR_UPDATE_TIMING
         BeginTiming(VectorUpdateTimingIndex);
         EventTiming[NumEvents][InitStart] = amps_Clock();
-      }
 #endif
         handle = InitVectorUpdate(x, VectorUpdateAll);
 
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-        {
-          EventTiming[NumEvents][InitEnd] = amps_Clock();
-          EndTiming(VectorUpdateTimingIndex);
-        }
+        EventTiming[NumEvents][InitEnd] = amps_Clock();
+        EndTiming(VectorUpdateTimingIndex);
 #endif
 #endif
+      }
         compute_reg = ComputePkgIndRegion(compute_pkg);
 
         /*-----------------------------------------------------------------
@@ -860,28 +863,26 @@ void            InParallel_MatvecSubMat(
         break;
 
       case 1:
-
-#ifndef NO_VECTOR_UPDATE
-#ifdef VECTOR_UPDATE_TIMING
+      {
 #pragma omp master
       {
+#ifndef NO_VECTOR_UPDATE
+#ifdef VECTOR_UPDATE_TIMING
         BeginTiming(VectorUpdateTimingIndex);
         EventTiming[NumEvents][FinalizeStart] = amps_Clock();
-      }
 #endif
       FinalizeVectorUpdate(handle);
 
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-      {
-        EventTiming[NumEvents][FinalizeEnd] = amps_Clock();
-        EndTiming(VectorUpdateTimingIndex);
+      EventTiming[NumEvents][FinalizeEnd] = amps_Clock();
+      EndTiming(VectorUpdateTimingIndex);
+#endif
+#endif
       }
-#endif
-#endif
+      BARRIER;
 
-        compute_reg = ComputePkgDepRegion(compute_pkg);
-
+      compute_reg = ComputePkgDepRegion(compute_pkg);
+      }
         break;
     }
 
@@ -1170,24 +1171,21 @@ void            MatvecSubMat(
     switch (compute_i)
     {
       case 0:
-#ifndef NO_VECTOR_UPDATE
-#ifdef VECTOR_UPDATE_TIMING
 #pragma omp master
       {
+#ifndef NO_VECTOR_UPDATE
+#ifdef VECTOR_UPDATE_TIMING
         BeginTiming(VectorUpdateTimingIndex);
         EventTiming[NumEvents][InitStart] = amps_Clock();
-      }
 #endif
         handle = InitVectorUpdate(x, VectorUpdateAll);
 
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-        {
           EventTiming[NumEvents][InitEnd] = amps_Clock();
           EndTiming(VectorUpdateTimingIndex);
-        }
 #endif
 #endif
+      }
         compute_reg = ComputePkgIndRegion(compute_pkg);
 
         /*-----------------------------------------------------------------
@@ -1249,27 +1247,26 @@ void            MatvecSubMat(
         break;
 
       case 1:
-
-#ifndef NO_VECTOR_UPDATE
-#ifdef VECTOR_UPDATE_TIMING
+      {
 #pragma omp master
       {
+#ifndef NO_VECTOR_UPDATE
+#ifdef VECTOR_UPDATE_TIMING
         BeginTiming(VectorUpdateTimingIndex);
         EventTiming[NumEvents][FinalizeStart] = amps_Clock();
-      }
 #endif
       FinalizeVectorUpdate(handle);
 
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-      {
         EventTiming[NumEvents][FinalizeEnd] = amps_Clock();
         EndTiming(VectorUpdateTimingIndex);
+#endif
+#endif
       }
-#endif
-#endif
 
-        compute_reg = ComputePkgDepRegion(compute_pkg);
+      BARRIER;
+      compute_reg = ComputePkgDepRegion(compute_pkg);
+      }
 
         break;
     }
@@ -1553,25 +1550,22 @@ void            MatvecJacF(
     switch (compute_i)
     {
       case 0:
+#pragma omp master
+      {
 
 #ifndef NO_VECTOR_UPDATE
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-      {
         BeginTiming(VectorUpdateTimingIndex);
         EventTiming[NumEvents][InitStart] = amps_Clock();
-      }
 #endif
         handle = InitVectorUpdate(x, VectorUpdateAll);
 
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-        {
         EventTiming[NumEvents][InitEnd] = amps_Clock();
         EndTiming(VectorUpdateTimingIndex);
-        }
 #endif
 #endif
+      }
 
         compute_reg = ComputePkgIndRegion(compute_pkg);
         /*-----------------------------------------------------------------
@@ -1632,27 +1626,26 @@ void            MatvecJacF(
         break;
 
       case 1:
-
+      {
+#pragma omp master
+        {
 #ifndef NO_VECTOR_UPDATE
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-      {
         BeginTiming(VectorUpdateTimingIndex);
         EventTiming[NumEvents][FinalizeStart] = amps_Clock();
-      }
 #endif
         FinalizeVectorUpdate(handle);
 
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-        {
         EventTiming[NumEvents][FinalizeEnd] = amps_Clock();
         EndTiming(VectorUpdateTimingIndex);
+#endif
+#endif
         }
-#endif
-#endif
 
+        BARRIER;
         compute_reg = ComputePkgDepRegion(compute_pkg);
+        }
         break;
     }
 
@@ -1923,25 +1916,22 @@ void            MatvecJacE(
     switch (compute_i)
     {
       case 0:
+#pragma omp master
+      {
 
 #ifndef NO_VECTOR_UPDATE
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-      {
         BeginTiming(VectorUpdateTimingIndex);
         EventTiming[NumEvents][InitStart] = amps_Clock();
-      }
 #endif
         handle = InitVectorUpdate(x, VectorUpdateAll);
 
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-        {
         EventTiming[NumEvents][InitEnd] = amps_Clock();
         EndTiming(VectorUpdateTimingIndex);
+#endif
+#endif
         }
-#endif
-#endif
 
         compute_reg = ComputePkgIndRegion(compute_pkg);
         /*-----------------------------------------------------------------
@@ -2002,27 +1992,27 @@ void            MatvecJacE(
         break;
 
       case 1:
+      {
+#pragma omp master
+      {
 
 #ifndef NO_VECTOR_UPDATE
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-      {
         BeginTiming(VectorUpdateTimingIndex);
         EventTiming[NumEvents][FinalizeStart] = amps_Clock();
-      }
 #endif
         FinalizeVectorUpdate(handle);
 
 #ifdef VECTOR_UPDATE_TIMING
-#pragma omp master
-        {
         EventTiming[NumEvents][FinalizeEnd] = amps_Clock();
         EndTiming(VectorUpdateTimingIndex);
+#endif
+#endif
         }
-#endif
-#endif
 
-        compute_reg = ComputePkgDepRegion(compute_pkg);
+      BARRIER;
+      compute_reg = ComputePkgDepRegion(compute_pkg);
+      }
         break;
     }
 
