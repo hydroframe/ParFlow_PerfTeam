@@ -295,8 +295,8 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
 
   /* Calculate pressure dependent properties: density and saturation */
   double dtmp;
-  PFModuleInvokeType(PhaseDensityInvoke, density_module, (0, pressure, density, &dtmp, &dtmp,
-                                                          CALCFCN));
+  PFModuleInvokeType(PhaseDensityInvoke, density_module,
+                     (0, pressure, density, &dtmp, &dtmp, CALCFCN));
   /* @MCB:
      This barrier is necessary because the PhaseDensity module has no barriers.
      RichardsJacobianEval calls this module twice, for CALCFCN and CALCDER, and so
@@ -305,8 +305,9 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
   */
   BARRIER;
 
-  PFModuleInvokeType(SaturationInvoke, saturation_module, (saturation, pressure, density,
-                                                           gravity, problem_data, CALCFCN));
+  PFModuleInvokeType(SaturationInvoke, saturation_module,
+                     (saturation, pressure, density, gravity, problem_data, CALCFCN));
+  //BARRIER;
 
   /* Calculate accumulation terms for the function values */
 

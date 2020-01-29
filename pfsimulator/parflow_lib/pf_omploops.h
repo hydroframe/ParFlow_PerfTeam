@@ -72,10 +72,10 @@
 // @MCB: Note, the trailing {} is to deal with potential semicolons
 #define BARRIER PRAGMA(omp barrier) {}
 #define NORETVAL
-#define COMMS_BARRIER(retval)																				\
-	if (amps_Size(amps_CommWorld) == 1 && omp_get_thread_num() != 0)	\
-		return retval;																									\
-	BARRIER;
+#define COMMS_BARRIER(retval)                                       \
+  if (amps_Size(amps_CommWorld) == 1 && omp_get_thread_num() != 0)  \
+    return retval;                                                  \
+  BARRIER;
 
 #define BEGIN_REGION PRAGMA(omp parallel) {
 #define END_REGION }
@@ -200,7 +200,7 @@ void omp_AnyPrintf(const char *fmt, ...)
 /* Util function to calculate the desired step in BoxLoopIX macros.
    Not tested with strides other than 1, but the math seems right.
    Pragma is to enable SIMD function calls from SIMD loops */
-#pragma omp declare simd uniform(idx, nx, ny, sx, jinc, kinc)
+#pragma omp declare simd uniform(idx, j, k, nx, ny, sx, jinc, kinc)
 inline int
 INC_IDX(int idx, int i, int j, int k,
         int nx, int ny, int sx,
@@ -353,6 +353,7 @@ INC_IDX(int idx, int i, int j, int k,
 /**************************************************************************
  * SIMD Variants
  **************************************************************************/
+#undef SIMD_BoxLoopI0
 #define SIMD_BoxLoopI0(pragma, locals,                      \
                        i, j, k,                             \
                        ix, iy, iz,                          \
@@ -373,6 +374,7 @@ INC_IDX(int idx, int i, int j, int k,
       }                                                     \
   }
 
+#undef SIMD_BoxLoopI1
 #define SIMD_BoxLoopI1(pragma, locals,                                  \
                        i, j, k,                                         \
                        ix, iy, iz, nx, ny, nz,                          \
@@ -381,21 +383,23 @@ INC_IDX(int idx, int i, int j, int k,
   {                                                                     \
     int i1_start = i1;                                                  \
     DeclareInc(PV_jinc_1, PV_kinc_1, nx, ny, nz, nx1, ny1, nz1, sx1, sy1, sz1); \
-    PRAGMA(omp pragma collapse(3) private(i, j, k, i1 locals))          \
+    PRAGMA(omp pragma collapse(2) private(i, j, k, i1 locals))          \
       for (k = iz; k < iz + nz; k++)                                    \
       {                                                                 \
         for (j = iy; j < iy + ny; j++)                                  \
         {                                                               \
-          for (i = ix; i < ix + nx; i++)                                \
-          {                                                             \
-            i1 = INC_IDX(i1_start, (i - ix), (j - iy), (k - iz),        \
-                         nx, ny, sx1, PV_jinc_1, PV_kinc_1);            \
-            body;                                                       \
-          }                                                             \
+          PRAGMA(omp simd)                                              \
+            for (i = ix; i < ix + nx; i++)                              \
+            {                                                           \
+              i1 = INC_IDX(i1_start, (i - ix), (j - iy), (k - iz),      \
+                           nx, ny, sx1, PV_jinc_1, PV_kinc_1);          \
+              body;                                                     \
+            }                                                           \
         }                                                               \
       }                                                                 \
   }
 
+#undef SIMD_BoxLoopI2
 #define SIMD_BoxLoopI2(pragma, locals,                                  \
                        i, j, k,                                         \
                        ix, iy, iz, nx, ny, nz,                          \
@@ -407,51 +411,25 @@ INC_IDX(int idx, int i, int j, int k,
     int i2_start = i2;                                                  \
     DeclareInc(PV_jinc_1, PV_kinc_1, nx, ny, nz, nx1, ny1, nz1, sx1, sy1, sz1); \
     DeclareInc(PV_jinc_2, PV_kinc_2, nx, ny, nz, nx2, ny2, nz2, sx2, sy2, sz2); \
-    PRAGMA(omp pragma collapse(3) private(i, j, k, i1, i2 locals))      \
+    PRAGMA(omp pragma collapse(2) private(i, j, k, i1, i2 locals))      \
       for (k = iz; k < iz + nz; k++)                                    \
       {                                                                 \
         for (j = iy; j < iy + ny; j++)                                  \
         {                                                               \
-          for (i = ix; i < ix + nx; i++)                                \
-          {                                                             \
-            i1 = INC_IDX(i1_start, (i - ix), (j - iy), (k - iz),        \
-                         nx, ny, sx1, PV_jinc_1, PV_kinc_1);            \
-            i2 = INC_IDX(i2_start, (i - ix), (j - iy), (k - iz),        \
-                         nx, ny, sx2, PV_jinc_2, PV_kinc_2);            \
-            body;                                                       \
-          }                                                             \
+          PRAGMA(omp simd)                                              \
+            for (i = ix; i < ix + nx; i++)                              \
+            {                                                           \
+              i1 = INC_IDX(i1_start, (i - ix), (j - iy), (k - iz),      \
+                           nx, ny, sx1, PV_jinc_1, PV_kinc_1);          \
+              i2 = INC_IDX(i2_start, (i - ix), (j - iy), (k - iz),      \
+                           nx, ny, sx2, PV_jinc_2, PV_kinc_2);          \
+              body;                                                     \
+            }                                                           \
         }                                                               \
       }                                                                 \
   }
 
-#define SIMD_BoxLoopI2(pragma, locals,                                  \
-                       i, j, k,                                         \
-                       ix, iy, iz, nx, ny, nz,                          \
-                       i1, nx1, ny1, nz1, sx1, sy1, sz1,                \
-                       i2, nx2, ny2, nz2, sx2, sy2, sz2,                \
-                       body)                                            \
-  {                                                                     \
-    int i1_start = i1;                                                  \
-    int i2_start = i2;                                                  \
-    DeclareInc(PV_jinc_1, PV_kinc_1, nx, ny, nz, nx1, ny1, nz1, sx1, sy1, sz1); \
-    DeclareInc(PV_jinc_2, PV_kinc_2, nx, ny, nz, nx2, ny2, nz2, sx2, sy2, sz2); \
-    PRAGMA(omp pragma collapse(3) private(i, j, k, i1, i2 locals))      \
-      for (k = iz; k < iz + nz; k++)                                    \
-      {                                                                 \
-        for (j = iy; j < iy + ny; j++)                                  \
-        {                                                               \
-          for (i = ix; i < ix + nx; i++)                                \
-          {                                                             \
-            i1 = INC_IDX(i1_start, (i - ix), (j - iy), (k - iz),        \
-                         nx, ny, sx1, PV_jinc_1, PV_kinc_1);            \
-            i2 = INC_IDX(i2_start, (i - ix), (j - iy), (k - iz),        \
-                         nx, ny, sx2, PV_jinc_2, PV_kinc_2);            \
-            body;                                                       \
-          }                                                             \
-        }                                                               \
-      }                                                                 \
-  }
-
+#undef SIMD_BoxLoopI3
 #define SIMD_BoxLoopI3(pragma, locals,                                  \
                        i, j, k,                                         \
                        ix, iy, iz, nx, ny, nz,                          \
@@ -466,21 +444,22 @@ INC_IDX(int idx, int i, int j, int k,
     DeclareInc(PV_jinc_1, PV_kinc_1, nx, ny, nz, nx1, ny1, nz1, sx1, sy1, sz1); \
     DeclareInc(PV_jinc_2, PV_kinc_2, nx, ny, nz, nx2, ny2, nz2, sx2, sy2, sz2); \
     DeclareInc(PV_jinc_3, PV_kinc_3, nx, ny, nz, nx3, ny3, nz3, sx3, sy3, sz3); \
-    PRAGMA(omp pragma collapse(3) private(i, j, k, i1, i2, i3 locals))  \
+    PRAGMA(omp pragma collapse(2) private(i, j, k, i1, i2, i3 locals))  \
       for (k = iz; k < iz + nz; k++)                                    \
       {                                                                 \
         for (j = iy; j < iy + ny; j++)                                  \
         {                                                               \
-          for (i = ix; i < ix + nx; i++)                                \
-          {                                                             \
-            i1 = INC_IDX(i1_start, (i - ix), (j - iy), (k - iz),        \
-                         nx, ny, sx1, PV_jinc_1, PV_kinc_1);            \
-            i2 = INC_IDX(i2_start, (i - ix), (j - iy), (k - iz),        \
-                         nx, ny, sx2, PV_jinc_2, PV_kinc_2);            \
-            i3 = INC_IDX(i3_start, (i - ix), (j - iy), (k - iz),        \
-                         nx, ny, sx3, PV_jinc_3, PV_kinc_3);            \
-            body;                                                       \
-          }                                                             \
+          PRAGMA(omp simd)                                              \
+            for (i = ix; i < ix + nx; i++)                              \
+            {                                                           \
+              i1 = INC_IDX(i1_start, (i - ix), (j - iy), (k - iz),      \
+                           nx, ny, sx1, PV_jinc_1, PV_kinc_1);          \
+              i2 = INC_IDX(i2_start, (i - ix), (j - iy), (k - iz),      \
+                           nx, ny, sx2, PV_jinc_2, PV_kinc_2);          \
+              i3 = INC_IDX(i3_start, (i - ix), (j - iy), (k - iz),      \
+                           nx, ny, sx3, PV_jinc_3, PV_kinc_3);          \
+              body;                                                     \
+            }                                                           \
         }                                                               \
       }                                                                 \
   }

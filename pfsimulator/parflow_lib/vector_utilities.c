@@ -695,7 +695,10 @@ double PFVDotProd(
   int sg, i, j, k, i_x, i_y;
 
   amps_Invoice result_invoice;
-
+  // Attempt to get parallelism here, this takes up a lot of time in ModifiedGS
+#pragma omp parallel
+  {
+    double local_sum = ZERO;
   ForSubgridI(sg, GridSubgrids(grid))
   {
     subgrid = GridSubgrid(grid, sg);
@@ -725,13 +728,19 @@ double PFVDotProd(
     i_x = 0;
     i_y = 0;
     //BoxLoopReduceI2(NO_LOCALS, sum,
-    BoxLoopI2(
-                    i, j, k, ix, iy, iz, nx, ny, nz,
-                    i_x, nx_x, ny_x, nz_x, 1, 1, 1,
-                    i_y, nx_y, ny_y, nz_y, 1, 1, 1,
+    //BoxLoopI2(
+    _BoxLoopI2(NoWait, NO_LOCALS,
+               i, j, k, ix, iy, iz, nx, ny, nz,
+               i_x, nx_x, ny_x, nz_x, 1, 1, 1,
+               i_y, nx_y, ny_y, nz_y, 1, 1, 1,
     {
-      sum += xp[i_x] * yp[i_y];
+      local_sum += xp[i_x] * yp[i_y];
+      //sum += xp[i_x] * yp[i_y];
     });
+  }
+  #pragma omp atomic update
+  sum += local_sum;
+
   }
 
   result_invoice = amps_NewInvoice("%d", &sum);

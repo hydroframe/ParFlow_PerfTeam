@@ -446,11 +446,13 @@ void         FinalizeCommunication(
   });
   //BARRIER;
   #else
+  #if 0
   if (omp_get_thread_num() != 0)
   {
     fprintf(stderr, "Error: Not master thread in Comms!\n");
     exit(-1);
   }
+  #endif
   if (handle)
     (void)amps_Wait((amps_Handle)handle);
   #endif

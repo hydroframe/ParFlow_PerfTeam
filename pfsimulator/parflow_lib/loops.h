@@ -45,6 +45,10 @@
 #define _BoxLoopI1(unused_pragma, locals, ...) BoxLoopI1(__VA_ARGS__)
 #define _BoxLoopI2(unused_pragma, locals, ...) BoxLoopI2(__VA_ARGS__)
 #define _BoxLoopI3(unused_pragma, locals, ...) BoxLoopI3(__VA_ARGS__)
+#define SIMD_BoxLoopI0(unused_pragma, locals, ...) BoxLoopI0(__VA_ARGS__)
+#define SIMD_BoxLoopI1(unused_pragma, locals, ...) BoxLoopI1(__VA_ARGS__)
+#define SIMD_BoxLoopI2(unused_pragma, locals, ...) BoxLoopI2(__VA_ARGS__)
+#define SIMD_BoxLoopI3(unused_pragma, locals, ...) BoxLoopI3(__VA_ARGS__)
 
 /* Wrapper for Reduction loops without USING_PARALLEL
    Useful for OpenMP to allow the use of the reduction clause */

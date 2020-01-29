@@ -217,7 +217,7 @@ void     RedBlackGSPoint(
           bp = SubvectorElt(b_sub, ix, iy, iz);
 
           iv = im = 0;
-          _BoxLoopI2(NoWait, NO_LOCALS,
+          _BoxLoopI2(NoWait schedule(static, 32), NO_LOCALS,
                      i, j, k, ix, iy, iz, nx, ny, nz,
                      iv, nx_v, ny_v, nz_v, sx, sy, sz,
                      im, nx_m, ny_m, nz_m, sx, sy, sz,
@@ -272,11 +272,16 @@ void     RedBlackGSPoint(
 
         case 1:
         {
+          BARRIER;
+
           #pragma omp master
           {
           FinalizeVectorUpdate(handle);
           }
 
+          /* @MCB: This barrier is costing us ~3s out of ~100s total on 4 threads.
+             This barrier cost might inflate with more threads.  Need to investigate.
+          */
           BARRIER;
           compute_reg = ComputePkgDepRegion(compute_pkg);
         }
@@ -358,7 +363,7 @@ void     RedBlackGSPoint(
           bp = SubvectorElt(b_sub, ix, iy, iz);
 
           iv = im = 0;
-          _BoxLoopI2(NoWait, NO_LOCALS,
+          _BoxLoopI2(NoWait schedule(static, 32), NO_LOCALS,
                      i, j, k, ix, iy, iz, nx, ny, nz,
                      iv, nx_v, ny_v, nz_v, sx, sy, sz,
                      im, nx_m, ny_m, nz_m, sx, sy, sz,

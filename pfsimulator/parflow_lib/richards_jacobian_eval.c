@@ -56,7 +56,22 @@ extern "C"{
 
 #include <unistd.h>
 
+#if 0
 
+  /* @MCB:
+     For testing if we ever actually have multiple subgrids in this function.
+     As of 01/28/2020, we never have more than one subgrid.
+  */
+
+#undef ForSubgridI
+#define ForSubgridI(i, subgrid_array)                                   \
+  if (SubregionArraySize(subgrid_array) > 1)                            \
+  {                                                                     \
+    fprintf(stderr, "Region Array size bigger at %s:%d\n", __FILE__, __LINE__); \
+    exit(-1);                                                           \
+  }                                                                     \
+  i = 0;
+#endif
 /*---------------------------------------------------------------------
  * Define module structures
  *---------------------------------------------------------------------*/
@@ -137,7 +152,7 @@ int jacobian_stencil_shape_C[5][3] = { { 0, 0, 0 },
 /*---------------------------------------------------------------------
  * Define macros for jacobian evaluation
  *---------------------------------------------------------------------*/
-#ifdef HAVE_OMP
+#if 0
 
   /* OpenMP SIMD enabled versions */
 #define PMean(a, b, c, d)   _HarmonicMean(c, d)
@@ -455,19 +470,17 @@ void    RichardsJacobianEval(
   int ipatch, ival;
 
 
-  PFModuleInvokeType(PhaseDensityInvoke, density_module, (0, pressure, density, &dtmp, &dtmp,
-                                                          CALCFCN));
-  PFModuleInvokeType(PhaseDensityInvoke, density_module, (0, pressure, density_der, &dtmp,
-                                                          &dtmp, CALCDER));
-
+  PFModuleInvokeType(PhaseDensityInvoke, density_module,
+                     (0, pressure, density, &dtmp, &dtmp, CALCFCN));
+  PFModuleInvokeType(PhaseDensityInvoke, density_module,
+                     (0, pressure, density_der, &dtmp, &dtmp, CALCDER));
   BARRIER;
 
-  PFModuleInvokeType(SaturationInvoke, saturation_module, (saturation, pressure,
-                                                           density, gravity, problem_data,
-                                                           CALCFCN));
-  PFModuleInvokeType(SaturationInvoke, saturation_module, (saturation_der, pressure,
-                                                           density, gravity, problem_data,
-                                                           CALCDER));
+  PFModuleInvokeType(SaturationInvoke, saturation_module,
+                     (saturation, pressure, density, gravity, problem_data, CALCFCN));
+  PFModuleInvokeType(SaturationInvoke, saturation_module,
+                     (saturation_der, pressure, density, gravity, problem_data, CALCDER));
+  //BARRIER;
 
   ForSubgridI(is, GridSubgrids(grid))
   {
@@ -587,7 +600,6 @@ void    RichardsJacobianEval(
   }            /* End subgrid loop */
 
   /* Calculate rel_perm and rel_perm_der */
-
   PFModuleInvokeType(PhaseRelPermInvoke, rel_perm_module,
                      (rel_perm, pressure, density, gravity, problem_data,
                       CALCFCN));

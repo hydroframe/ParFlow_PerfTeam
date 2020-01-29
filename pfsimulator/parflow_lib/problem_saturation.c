@@ -281,6 +281,7 @@ void     Saturation(
             ppdat = SubvectorData(pp_sub);
             pddat = SubvectorData(pd_sub);
 
+            int tid = omp_get_thread_num();
             if (fcn == CALCFCN)
             {
               _GrGeomInLoop(InParallel, NO_LOCALS,

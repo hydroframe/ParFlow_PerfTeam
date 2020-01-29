@@ -311,7 +311,7 @@ void            Matvec(
           ap = SubmatrixElt(A_sub, si, ix, iy, iz);
 
           vi = 0; mi = 0;
-          _BoxLoopI2(InParallel, NO_LOCALS,
+          _BoxLoopI2(NoWait, NO_LOCALS,
                      i, j, k,
                      ix, iy, iz, nx, ny, nz,
                      vi, nx_v, ny_v, nz_v, sx, sy, sz,
@@ -326,7 +326,7 @@ void            Matvec(
           yp = SubvectorElt(y_sub, ix, iy, iz);
 
           vi = 0;
-          _BoxLoopI1(InParallel, NO_LOCALS,
+          _BoxLoopI1(NoWait, NO_LOCALS,
                      i, j, k,
                      ix, iy, iz, nx, ny, nz,
                      vi, nx_v, ny_v, nz_v, 1, 1, 1,
@@ -606,6 +606,13 @@ void            InParallel_Matvec(
 
         yp = SubvectorElt(y_sub, ix, iy, iz);
 
+        /* @MCB:
+           On ClayL 1x4, this segment is taking the most time (almost 80% of runtime!)
+           See if we can't explode the stencil size out?
+           Something like
+           ap1 ap2 ap3 and then += them all in one go?
+           would also let us fuse the subsequent loop *= alpha
+        */
         for (si = 0; si < stencil_size; si++)
         {
           xp = SubvectorElt(x_sub,

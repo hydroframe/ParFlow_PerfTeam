@@ -328,7 +328,14 @@ static void     AllocateVectorData(
 
     SubvectorDataSize(subvector) = data_size;
 
-    double  *data = amps_CTAlloc(double, data_size);
+    //double  *data = amps_CTAlloc(double, data_size);
+    double *data = amps_TAlloc(double, data_size);
+
+    /* @MCB: Memory first touch rule */
+    #pragma omp parallel for
+    for (int omp_i = 0; omp_i < data_size; omp_i++)
+      data[omp_i] = 0.0;
+
     VectorSubvector(vector, i)->allocated = TRUE;
 
     SubvectorData(VectorSubvector(vector, i)) = data;

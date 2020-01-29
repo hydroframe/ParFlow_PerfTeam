@@ -145,7 +145,7 @@ typedef struct {
  * Looping macros:
  *--------------------------------------------------------------------------*/
 
-#define ForSubgridI(i, subgrid_array)  ForSubregionI(i, subgrid_array)
+#define ForSubgridI(i, subgrid_array) ForSubregionI(i, subgrid_array)
 
 /*--------------------------------------------------------------------------
  * Class member functions:
