@@ -1065,36 +1065,7 @@ ForBCStructNumPatches(ipatch, bc_struct)
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
 
       ForPatchCellsPerFace(DirichletBC,
-                           BeforeAllCells(
-                           {
-/* @MCB:
-   Previously there was two module invokes on every iteratoin
-   of the BC Loop.  However, these calls were only retrieving
-   some constant value and (potentially) multiplying it against
-   the BC patch value.
-
-   Instead, the PhaseDensityConstants function was added to
-   retrieve those values once, and instead set den_d and dend_d
-   to the appropriate value based on the phase_type of the module.
-   This is much cheaper and also addresses the issue of module invokes
-   within a CUDA-enabled loop.
-*/
-                             fcn_phase_const = 0.0;
-                             der_phase_const = 0.0;
-                             phase_ref = 0.0;
-                             phase_comp = 0.0;
-                             phase_type = 0;
-
-                             ThisPFModule = density_module;
-                             PhaseDensityConstants(0, CALCFCN, &phase_type,
-                                                   &fcn_phase_const,
-                                                   &phase_ref,
-                                                   &phase_comp);
-                             PhaseDensityConstants(0, CALCDER, &phase_type,
-                                                   &der_phase_const,
-                                                   &phase_ref,
-                                                   &phase_comp);
-                           }),
+                           BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup(
                            {
@@ -1102,13 +1073,10 @@ ForBCStructNumPatches(ipatch, bc_struct)
                              im = SubmatrixEltIndex(J_sub, i, j, k);
                              value = bc_patch_values[ival];
 
-                             if (phase_type == 0) {
-                               den_d = fcn_phase_const;
-                               dend_d = der_phase_const;
-                             } else {
-                               den_d = phase_ref * exp(value * phase_comp);
-                               dend_d = phase_comp * phase_ref * exp(value * phase_comp);
-                             }
+                             PFModuleInvokeType(PhaseDensityInvoke, density_module,
+                                                (0, NULL, NULL, &value, &den_d, CALCFCN));
+                             PFModuleInvokeType(PhaseDensityInvoke, density_module,
+                                                (0, NULL, NULL, &value, &dend_d, CALCDER));
 
                              prod = rpp[ip] * dp[ip];
                              prod_der = rpdp[ip] * dp[ip] + rpp[ip] * ddp[ip];

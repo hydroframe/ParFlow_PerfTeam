@@ -1149,6 +1149,40 @@ typedef struct grgeom_octree {
     })                                                                       \
   }
 
+#define GrGeomOctreeFaceLoopNoFdir(i, j, k,                             \
+                                   node, octree, level_of_interest,     \
+                                   ix, iy, iz, nx, ny, nz,              \
+                                   setup,                               \
+                                   f_left, f_right,                     \
+                                   f_down, f_up,                        \
+                                   f_back, f_front,                     \
+                                   finalize)                            \
+  {                                                                     \
+    int PV_f;                                                           \
+    GrGeomOctreeInsideNodeLoop(i, j, k, node, octree, level_of_interest, \
+                               ix, iy, iz, nx, ny, nz,                  \
+                               TRUE,                                    \
+    {                                                                   \
+      for (PV_f = 0; PV_f < GrGeomOctreeNumFaces; PV_f++)               \
+        if (GrGeomOctreeHasFace(node, PV_f))                            \
+        {                                                               \
+          setup;                                                        \
+                                                                        \
+          switch (PV_f)                                                 \
+          {                                                             \
+            f_left;                                                     \
+            f_right;                                                    \
+            f_down;                                                     \
+            f_up;                                                       \
+            f_back;                                                     \
+            f_front;                                                    \
+          }                                                             \
+                                                                        \
+          finalize;                                                     \
+        }                                                               \
+    })                                                                  \
+  }
+
 /*==========================================================================
  *==========================================================================*/
 
