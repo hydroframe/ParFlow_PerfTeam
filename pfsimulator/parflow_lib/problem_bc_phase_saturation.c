@@ -270,9 +270,9 @@ void          BCPhaseSaturation(
                                LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                                CellSetup({
                                    sv = 0;
-                                   x = RealSpaceX(i, SubgridRX(subgrid)) + fdir[0] * dx2;
-                                   y = RealSpaceY(j, SubgridRY(subgrid)) + fdir[1] * dy2;
-                                   z = RealSpaceZ(k, SubgridRZ(subgrid)) + fdir[2] * dz2;
+                                   x = RealSpaceX(i, SubgridRX(subgrid));
+                                   y = RealSpaceY(j, SubgridRY(subgrid));
+                                   z = RealSpaceZ(k, SubgridRZ(subgrid));
                                    iv = SubvectorEltIndex(sat_sub, i, j, k);
                                  }),
                                FACE(Left, {

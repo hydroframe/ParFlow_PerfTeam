@@ -223,7 +223,6 @@ BCStruct    *BCPressure(
                                                         (0, NULL, NULL, &ref_press, &ref_den,
                                                          CALCFCN));
                                      ips = SubvectorEltIndex(z_mult_sub, i, j, k);
-                                     z = rsz_dat[ips] + fdir[2] * dz2 * z_mult_dat[ips];
                                      iel = (i - ix) + (j - iy) * nx;
                                      fcn_val = 0.0;
                                      nonlin_resid = 1.0;
