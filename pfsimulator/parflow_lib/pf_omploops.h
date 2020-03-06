@@ -29,6 +29,7 @@
 /* Utility macros for inserting OMP pragmas in macros */
 #define EMPTY()
 #define DEFER(x) x EMPTY()
+#define DEFER2(x) x EMPTY EMPTY() ()
 
 #undef PRAGMA
 #define PRAGMA(args) _Pragma( #args )

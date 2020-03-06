@@ -119,6 +119,7 @@ void    OverlandFlowEval(
     if (qx_v == NULL || qy_v == NULL)  /* do not return velocity fluxes */
     {
       ForPatchCellsPerFace(ALL,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                            CellSetup(DoNothing),
@@ -198,6 +199,7 @@ void    OverlandFlowEval(
     else   /* return velocity fluxes */
     {
       ForPatchCellsPerFace(ALL,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                            CellSetup(DoNothing),
@@ -278,6 +280,7 @@ void    OverlandFlowEval(
     if (qx_v == NULL || qy_v == NULL)  /* Do not return derivs of velocity fluxes */
     {
       ForPatchCellsPerFace(ALL,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                            CellSetup(DoNothing),
@@ -327,6 +330,7 @@ void    OverlandFlowEval(
     else   /* return derivs of velocity fluxes */
     {
       ForPatchCellsPerFace(ALL,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                            CellSetup(DoNothing),

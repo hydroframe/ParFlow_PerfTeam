@@ -143,6 +143,7 @@ void    OverlandFlowEvalDiff(
   if (fcn == CALCFCN)
   {
     ForPatchCellsPerFaceWithGhost(ALL,
+                                  InParallel, NO_LOCALS,
                                   BeforeAllCells(DoNothing),
                                   LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                                   CellSetup(DoNothing),
@@ -244,6 +245,7 @@ void    OverlandFlowEvalDiff(
       );
 
     ForPatchCellsPerFace(ALL,
+                         InParallel, NO_LOCALS,
                          BeforeAllCells(DoNothing),
                          LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                          CellSetup(DoNothing),
@@ -268,6 +270,7 @@ void    OverlandFlowEvalDiff(
   else          //fcn = CALCDER calculates the derivs of KE KW KN KS wrt to current cell (i,j,k)
   {
     ForPatchCellsPerFace(ALL,
+                         InParallel, NO_LOCALS,
                          BeforeAllCells(DoNothing),
                          LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                          CellSetup(DoNothing),

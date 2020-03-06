@@ -247,13 +247,14 @@ ForPatchCellsPerFace(ALL,
                      );
 #endif
 
-#define ForPatchCellsPerFace(bctype, before_loop, loopvars,   \
-                              setup,                          \
-                              f_left, f_right,                \
-                              f_down, f_up,                   \
-                              f_back, f_front,                \
-                              finalize,                       \
-                              after_loop)                     \
+#define ForPatchCellsPerFace(bctype, \
+                             before_loop, loopvars,           \
+                             setup,                           \
+                             f_left, f_right,                 \
+                             f_down, f_up,                    \
+                             f_back, f_front,                 \
+                             finalize,                        \
+                             after_loop)                      \
   {                                                           \
     if ( ((bctype) == ALL) ||                                 \
          ((bctype) == _GetCurrentPatch(loopvars)))            \
@@ -269,7 +270,8 @@ ForPatchCellsPerFace(ALL,
     }                                                         \
   }
 
-#define ForPatchCellsPerFaceWithGhost(bctype, before_loop, loopvars,  \
+#define ForPatchCellsPerFaceWithGhost(bctype, \
+                                      before_loop, loopvars,          \
                                       setup,                          \
                                       f_left, f_right,                \
                                       f_down, f_up,                   \

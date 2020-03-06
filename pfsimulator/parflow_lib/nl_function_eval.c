@@ -602,11 +602,13 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
     {
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
       ForPatchCellsPerFace(DirichletBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup({
                                pp_idx = 0;
                                ip = SubvectorEltIndex(p_sub, i, j, k);
+                               value = bc_patch_values[ival];
                              }),
                            FACE(Left,    { pp_idx = ip - 1; }),
                            FACE(Right,   { pp_idx = ip + 1; }),
@@ -1039,6 +1041,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
 
       ForPatchCellsPerFace(DirichletBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup(
@@ -1248,6 +1251,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
         ); /* End DirichletBC */
 
       ForPatchCellsPerFace(FluxBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup(
@@ -1402,6 +1406,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
         ); /* End FluxBC */
 
       ForPatchCellsPerFace(OverlandBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(
                            {
                              if (diffusive == 0)
@@ -1600,6 +1605,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
         ); /* End OverlandBC case */
 
       ForPatchCellsPerFace(SeepageFaceBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup(
@@ -1657,6 +1663,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
         ); /* End SeepageFaceBC case */
 
       ForPatchCellsPerFace(OverlandKinematicBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(
                            {
 /*  @RMM this is modified to be kinematic wave routing, with a new module for diffusive wave
@@ -1831,6 +1838,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
         );
 
       ForPatchCellsPerFace(OverlandDiffusiveBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(
                            {
                              /*  @RMM this is a new module for diffusive wave
@@ -2034,9 +2042,11 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
 
       ForPatchCellsPerFace(ALL,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup({
+                               pp_idx = 0;
                                ip = SubvectorEltIndex(p_sub, i, j, k);
                                value = bc_patch_values[ival];
                              }),

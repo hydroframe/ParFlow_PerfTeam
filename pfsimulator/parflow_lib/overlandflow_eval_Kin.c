@@ -130,6 +130,7 @@ void    OverlandFlowEvalKin(
   if (fcn == CALCFCN)
   {
     ForPatchCellsPerFaceWithGhost(ALL,
+                                  InParallel, NO_LOCALS,
                                   BeforeAllCells(DoNothing),
                                   LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                                   CellSetup(DoNothing),
@@ -216,6 +217,7 @@ void    OverlandFlowEvalKin(
 
 
     ForPatchCellsPerFace(ALL,
+                         InParallel, NO_LOCALS,
                          BeforeAllCells(DoNothing),
                          LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                          CellSetup(DoNothing),
@@ -239,6 +241,7 @@ void    OverlandFlowEvalKin(
   else          //fcn = CALCDER calculates the derivs
   {
     ForPatchCellsPerFaceWithGhost(ALL,
+                                  InParallel, NO_LOCALS,
                                   BeforeAllCells(DoNothing),
                                   LoopVars(i, j, k, ival, bc_struct, ipatch, sg),
                                   CellSetup(DoNothing),

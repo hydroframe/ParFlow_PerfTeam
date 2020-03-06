@@ -570,6 +570,7 @@ void    RichardsJacobianEval(
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
 
       ForPatchCellsPerFace(DirichletBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup({
@@ -1032,6 +1033,7 @@ void    RichardsJacobianEval(
       ForBCStructNumPatches(ipatch, bc_struct)
       {
         ForPatchCellsPerFace(ALL,
+                             InParallel, NO_LOCALS,
                              BeforeAllCells(DoNothing),
                              LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                              CellSetup({
@@ -1227,6 +1229,7 @@ void    RichardsJacobianEval(
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
 
       ForPatchCellsPerFace(DirichletBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(
                            {
 /* @MCB:
@@ -1364,6 +1367,7 @@ void    RichardsJacobianEval(
         ); /* End DirichletBC */
 
       ForPatchCellsPerFace(FluxBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup({ im = SubmatrixEltIndex(J_sub, i, j, k); }),
@@ -1381,6 +1385,7 @@ void    RichardsJacobianEval(
         ); /* End FluxBC */
 
       ForPatchCellsPerFace(OverlandBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup({ im = SubmatrixEltIndex(J_sub, i, j, k); }),
@@ -1487,6 +1492,7 @@ void    RichardsJacobianEval(
         ); /* End OverlandBC */
 
       ForPatchCellsPerFace(SeepageFaceBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells({ vol = dx * dy * dz; }),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup(DoNothing),
@@ -1516,6 +1522,7 @@ void    RichardsJacobianEval(
         ); /* End SeepageFaceBC */
 
       ForPatchCellsPerFace(OverlandKinematicBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup({ im = SubmatrixEltIndex(J_sub, i, j, k); }),
@@ -1550,6 +1557,7 @@ void    RichardsJacobianEval(
         ); /* End OverlandKinematicBC */
 
       ForPatchCellsPerFace(OverlandDiffusiveBC,
+                           InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup({ im = SubmatrixEltIndex(J_sub, i, j, k); }),
@@ -1717,6 +1725,7 @@ void    RichardsJacobianEval(
       ForBCStructNumPatches(ipatch, bc_struct)
       {
         ForPatchCellsPerFace(OverlandKinematicBC,
+                             InParallel, NO_LOCALS,
                              BeforeAllCells(DoNothing),
                              LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                              CellSetup(DoNothing),
@@ -1808,6 +1817,7 @@ void    RichardsJacobianEval(
           ); /* End OverlandKinematicBC */
 
         ForPatchCellsPerFace(OverlandDiffusiveBC,
+                             InParallel, NO_LOCALS,
                              BeforeAllCells(DoNothing),
                              LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                              CellSetup(DoNothing),
@@ -1899,6 +1909,7 @@ void    RichardsJacobianEval(
           ); /* End OverlandDiffusiveBC */
 
         ForPatchCellsPerFace(OverlandBC,
+                             InParallel, NO_LOCALS,
                              BeforeAllCells(DoNothing),
                              LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                              CellSetup(DoNothing),
