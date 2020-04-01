@@ -1908,11 +1908,12 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
     {
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
 
-      ForPatchCellsPerFace(ALL,
+      ForPatchCellsPerFace(DirichletBC,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
                            CellSetup({
                                ip = SubvectorEltIndex(p_sub, i, j, k);
+                               pp_idx = 0;
                                value = bc_patch_values[ival];
                              }),
                            FACE(Left,  { pp_idx = ip - 1; }),
