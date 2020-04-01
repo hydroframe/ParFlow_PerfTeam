@@ -2041,7 +2041,7 @@ void NlFunctionEval(Vector *     pressure, /* Current pressure values */
     {
       bc_patch_values = BCStructPatchValues(bc_struct, ipatch, is);
 
-      ForPatchCellsPerFace(ALL,
+      ForPatchCellsPerFace(DirichletBC,
                            InParallel, NO_LOCALS,
                            BeforeAllCells(DoNothing),
                            LoopVars(i, j, k, ival, bc_struct, ipatch, is),
