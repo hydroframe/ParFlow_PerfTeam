@@ -31,6 +31,19 @@ set(PARALLEL_TESTS
   test17
   )
 
+# The feature tested by test16 is not supported by the amps 'cuda' layer
+if(${PARFLOW_AMPS_LAYER} STREQUAL "cuda")
+  list(REMOVE_ITEM PARALLEL_TESTS test16)
+endif(${PARFLOW_AMPS_LAYER} STREQUAL "cuda")
+
+# Add GPU test case (same as test15 with Unified Memory)
+if(((${PARFLOW_HAVE_CUDA}) OR (${PARFLOW_HAVE_KOKKOS})) AND (${PARFLOW_AMPS_LAYER} STREQUAL "mpi1"))
+  list(APPEND PARALLEL_TESTS test18)
+  if(NOT (${PARFLOW_HAVE_CUDA}))
+    list(REMOVE_ITEM PARALLEL_TESTS test15)  
+  endif(NOT (${PARFLOW_HAVE_CUDA}))
+endif(((${PARFLOW_HAVE_CUDA}) OR (${PARFLOW_HAVE_KOKKOS})) AND (${PARFLOW_AMPS_LAYER} STREQUAL "mpi1"))
+
 set(ALL_TESTS ${SEQUENTIAL_TESTS} ${PARALLEL_TESTS})
 list(REMOVE_DUPLICATES ALL_TESTS)
 
